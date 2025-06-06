@@ -5,17 +5,17 @@ import { QrScanner } from "./components/QrScanner";
 import { TicketList } from "./components/TicketList";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<"create" | "scan" | "list">("create");
+  const [activeTab, setActiveTab] = useState<"create" | "scan" | "list">("list");
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 overflow-hidden">
-      {/* Mobile-optimized header */}
-      <header className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b shadow-sm safe-area-top">
-        <div className="px-4 py-3">
-          <h1 className="text-xl sm:text-2xl font-bold text-blue-600 text-center mb-3">QR Ticket System</h1>
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      {/* Mobile-optimized header with proper safe area */}
+      <header className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b shadow-sm">
+        <div className="pt-safe-top px-4 py-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-blue-600 text-center mb-4">QR Ticket System</h1>
           
           {/* Mobile-optimized tab navigation */}
-          <div className="flex bg-gray-100 rounded-xl p-1">
+          <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
             <button
               onClick={() => setActiveTab("create")}
               className={`flex-1 py-3 px-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -31,6 +31,7 @@ export default function App() {
                 <span className="text-xs">Create</span>
               </div>
             </button>
+            
             <button
               onClick={() => setActiveTab("scan")}
               className={`flex-1 py-3 px-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -46,6 +47,7 @@ export default function App() {
                 <span className="text-xs">Scan</span>
               </div>
             </button>
+            
             <button
               onClick={() => setActiveTab("list")}
               className={`flex-1 py-3 px-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -65,11 +67,13 @@ export default function App() {
         </div>
       </header>
 
-      {/* Mobile-optimized main content */}
+      {/* Mobile-optimized main content with proper spacing */}
       <main className="flex-1 overflow-hidden">
-        {activeTab === "create" && <CreateTicket />}
-        {activeTab === "scan" && <QrScanner />}
-        {activeTab === "list" && <TicketList />}
+        <div className="h-full">
+          {activeTab === "create" && <CreateTicket />}
+          {activeTab === "scan" && <QrScanner />}
+          {activeTab === "list" && <TicketList />}
+        </div>
       </main>
       
       {/* Mobile-optimized toaster */}
