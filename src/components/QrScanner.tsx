@@ -193,6 +193,9 @@ export function QrScanner() {
           ref={videoRef} 
           className="w-full h-full object-cover"
           style={{ display: 'block' }}
+          autoPlay
+          playsInline
+          muted
         />
       </div>
       
@@ -266,8 +269,8 @@ export function QrScanner() {
 
       {/* Success/Warning Modal */}
       {showModal && modalData && (
-        <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full mx-4 overflow-hidden">
+        <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4 pt-safe-top pb-safe-bottom">
+          <div className="bg-white rounded-xl max-w-sm w-full mx-4 my-8 overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className={`p-6 text-center ${
               modalData.status === "success" 
@@ -288,56 +291,61 @@ export function QrScanner() {
                   </svg>
                 )}
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-xl font-bold text-white mb-2">
                 {modalData.status === "success" 
                   ? "Check-in Successful!" 
                   : modalData.ticket?.checkinCounter === 1 
                     ? "Welcome Back!" 
-                    : "Multiple Scan Attempts"}
+                    : "Multiple Scan Alert"}
               </h2>
-              <p className="text-white/90 text-lg">{modalData.message}</p>
+              <p className="text-white/90">{modalData.message}</p>
             </div>
 
-            {/* Modal Body */}
+            {/* Modal Body - Simplified for mobile */}
             <div className="p-6 space-y-4">
               {modalData.ticket && (
                 <>
+                  {/* Team Information */}
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <span className="text-sm font-medium text-gray-600">Team Name:</span>
-                      <span className="text-lg font-bold text-gray-900 text-right">
+                    <div className="text-center">
+                      <h3 className="text-lg font-bold text-gray-900 mb-1">
                         {modalData.ticket.teamName}
-                      </span>
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Leader: {modalData.ticket.leaderName}
+                      </p>
                     </div>
                     
-                    <div className="flex justify-between items-start">
-                      <span className="text-sm font-medium text-gray-600">Team Leader:</span>
-                      <span className="text-lg font-semibold text-gray-800 text-right">
-                        {modalData.ticket.leaderName}
-                      </span>
+                    {/* Check-in details */}
+                    <div className="border-t pt-3 space-y-2">
+                      {modalData.ticket.checkedInAt && (
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500">Check-in Time</p>
+                          <p className="text-sm font-medium text-gray-700">
+                            {new Date(modalData.ticket.checkedInAt).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {modalData.ticket.checkinCounter !== undefined && modalData.ticket.checkinCounter > 1 && (
+                        <div className="text-center">
+                          <p className="text-xs text-red-500">Scan Count</p>
+                          <p className="text-sm font-bold text-red-600">
+                            {modalData.ticket.checkinCounter} times
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    
-                    {modalData.ticket.checkedInAt && (
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-medium text-gray-600">Check-in Time:</span>
-                        <span className="text-sm text-gray-700 text-right">
-                          {new Date(modalData.ticket.checkedInAt).toLocaleString()}
-                        </span>
-                      </div>
-                    )}
-                    
-                    {modalData.ticket.checkinCounter !== undefined && (
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-medium text-gray-600">Scan Count:</span>
-                        <span className="text-sm font-bold text-gray-800 text-right">
-                          {modalData.ticket.checkinCounter} time{modalData.ticket.checkinCounter !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    )}
                   </div>
 
+                  {/* Status Badge */}
                   <div className="text-center">
-                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
                       modalData.status === "success" 
                         ? "bg-green-100 text-green-800" 
                         : modalData.ticket?.checkinCounter === 1 
@@ -354,8 +362,8 @@ export function QrScanner() {
                       {modalData.status === "success" 
                         ? "Newly Checked In" 
                         : modalData.ticket?.checkinCounter === 1 
-                          ? "Welcome! Already Checked In" 
-                          : `Multiple Scans (${modalData.ticket?.checkinCounter || 0})`}
+                          ? "Already Checked In" 
+                          : "Multiple Scans"}
                     </div>
                   </div>
                 </>
@@ -366,7 +374,7 @@ export function QrScanner() {
             <div className="p-6 pt-0">
               <button
                 onClick={closeModal}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="w-full bg-blue-600 text-white py-4 px-4 rounded-xl hover:bg-blue-700 transition-colors font-medium text-lg"
               >
                 Continue Scanning
               </button>
