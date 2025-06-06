@@ -1,12 +1,15 @@
 {
-  "name": "flex-template",
+  "name": "qr-ticket-scanner",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "vite --open",
     "dev:backend": "convex dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "convex:deploy": "convex deploy",
     "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build"
   },
   "dependencies": {
