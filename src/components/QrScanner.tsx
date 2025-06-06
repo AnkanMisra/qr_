@@ -3,6 +3,7 @@ import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import QrScannerLib from 'qr-scanner';
 import { toast } from "sonner";
+import { TicketNotFoundModal } from "./TicketNotFoundModal";
 
 type TicketResult = {
   status: "success" | "warning" | "error";
@@ -22,6 +23,8 @@ export function QrScanner() {
   const [isActive, setIsActive] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalData, setModalData] = useState<TicketResult | null>(null);
+  const [showNotFoundModal, setShowNotFoundModal] = useState(false);
+  const [notFoundCode, setNotFoundCode] = useState<string>('');
   const [lastProcessedQR, setLastProcessedQR] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastScanTime, setLastScanTime] = useState<number>(0);
@@ -69,12 +72,15 @@ export function QrScanner() {
           duration: 4000
         });
       } else {
+        // Show ticket not found modal for error cases
+        setNotFoundCode(qrData);
+        setShowNotFoundModal(true);
         toast.error(result.message, { duration: 4000 });
       }
 
       // Restart scanner after processing with delay
       setTimeout(() => {
-        if (qrScannerRef.current) {
+        if (qrScannerRef.current && !showModal && !showNotFoundModal) {
           qrScannerRef.current.start();
         }
         setIsActive(true);
@@ -83,11 +89,14 @@ export function QrScanner() {
 
     } catch (err) {
       console.error('❌ Ticket processing failed:', err);
+      // Show not found modal for processing errors too
+      setNotFoundCode(qrData);
+      setShowNotFoundModal(true);
       toast.error("Failed to process ticket");
       setLastProcessedQR(''); // Reset on error
       // Restart scanner on error
       setTimeout(() => {
-        if (qrScannerRef.current) {
+        if (qrScannerRef.current && !showNotFoundModal) {
           qrScannerRef.current.start();
         }
         setIsActive(true);
@@ -100,6 +109,25 @@ export function QrScanner() {
   const closeModal = () => {
     setShowModal(false);
     setModalData(null);
+    // Restart scanner when modal closes
+    setTimeout(() => {
+      if (qrScannerRef.current) {
+        qrScannerRef.current.start();
+      }
+      setIsActive(true);
+    }, 500);
+  };
+
+  const closeNotFoundModal = () => {
+    setShowNotFoundModal(false);
+    setNotFoundCode('');
+    // Restart scanner when modal closes
+    setTimeout(() => {
+      if (qrScannerRef.current) {
+        qrScannerRef.current.start();
+      }
+      setIsActive(true);
+    }, 500);
   };
 
   const startScanner = () => {
@@ -346,6 +374,15 @@ export function QrScanner() {
           </div>
         </div>
       )}
+
+             {/* Ticket Not Found Modal */}
+       {showNotFoundModal && notFoundCode && (
+         <TicketNotFoundModal
+           isOpen={showNotFoundModal}
+           scannedCode={notFoundCode}
+           onClose={closeNotFoundModal}
+         />
+       )}
     </div>
   );
 } 

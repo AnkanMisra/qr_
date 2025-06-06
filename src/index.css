@@ -35,6 +35,22 @@
 
 @layer utilities {
   /* Safe area utilities for iOS devices */
+  .pt-safe-top {
+    padding-top: max(env(safe-area-inset-top), 12px);
+  }
+
+  .pb-safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 12px);
+  }
+
+  .pl-safe-left {
+    padding-left: max(env(safe-area-inset-left), 16px);
+  }
+
+  .pr-safe-right {
+    padding-right: max(env(safe-area-inset-right), 16px);
+  }
+
   .safe-area-top {
     padding-top: env(safe-area-inset-top);
   }
@@ -73,6 +89,17 @@
   /* Better focus styles for mobile */
   .focus-mobile {
     @apply focus:outline-none focus:ring-4 focus:ring-blue-500/20;
+  }
+
+  /* Mobile-specific padding utilities */
+  .mobile-padding-x {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  .mobile-padding-y {
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
 }
 
