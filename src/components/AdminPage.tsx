@@ -3,46 +3,82 @@ import { CreateTicket } from "./CreateTicket";
 import { AdminTicketsView } from "./AdminTicketsView";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-
-// You can change this password to whatever you want
-const ADMIN_PASSWORD = "admin2024"; // Change this to your desired password
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 export function AdminPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<"create" | "view">("create");
+    const [sessionToken, setSessionToken] = useState<string | null>(null);
 
-    // Check if user is already authenticated (stored in localStorage)
+    const authenticateAdmin = useMutation(api.admin.authenticateAdmin);
+    const validateSession = useQuery(api.admin.validateAdminSession, 
+        sessionToken ? { sessionToken } : "skip"
+    );
+    const invalidateSession = useMutation(api.admin.invalidateAdminSession);
+
+    // Check if user has a valid session on load
     useEffect(() => {
-        const authStatus = localStorage.getItem("qr_admin_auth");
-        if (authStatus === "authenticated") {
-            setIsAuthenticated(true);
+        const storedToken = localStorage.getItem("admin_session_token");
+        if (storedToken) {
+            setSessionToken(storedToken);
         }
     }, []);
 
-    const handleLogin = (e: React.FormEvent) => {
+    // Validate session when token is available
+    useEffect(() => {
+        if (validateSession?.isValid) {
+            setIsAuthenticated(true);
+        } else if (validateSession?.isValid === false) {
+            // Session invalid, clear local storage
+            localStorage.removeItem("admin_session_token");
+            setSessionToken(null);
+            setIsAuthenticated(false);
+            if (validateSession.message === "Session expired") {
+                toast.error("Session expired. Please log in again.");
+            }
+        }
+    }, [validateSession]);
+
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
 
-        // Simulate a small delay for better UX
-        setTimeout(() => {
-            if (password === ADMIN_PASSWORD) {
+        try {
+            const result = await authenticateAdmin({ password });
+            
+            if (result.success && result.sessionToken) {
                 setIsAuthenticated(true);
-                localStorage.setItem("qr_admin_auth", "authenticated");
+                setSessionToken(result.sessionToken);
+                localStorage.setItem("admin_session_token", result.sessionToken);
                 toast.success("Successfully logged in to admin panel");
                 setPassword("");
             } else {
-                toast.error("Incorrect password. Access denied.");
+                toast.error(result.message || "Authentication failed");
                 setPassword("");
             }
+        } catch (error) {
+            toast.error("Authentication error. Please try again.");
+            setPassword("");
+        } finally {
             setIsLoading(false);
-        }, 800);
+        }
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        if (sessionToken) {
+            try {
+                await invalidateSession({ sessionToken });
+            } catch (error) {
+                console.error("Error invalidating session:", error);
+            }
+        }
+        
         setIsAuthenticated(false);
-        localStorage.removeItem("qr_admin_auth");
+        setSessionToken(null);
+        localStorage.removeItem("admin_session_token");
         toast.success("Logged out successfully");
     };
 
@@ -73,8 +109,8 @@ export function AdminPage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                 </svg>
                             </div>
-                            <h1 className="text-2xl font-bold">Admin Access</h1>
-                            <p className="text-red-100 mt-2">Enter password to access admin panel</p>
+                            <h1 className="text-2xl font-bold">Secure Admin Access</h1>
+                            <p className="text-red-100 mt-2">Server-side authentication required</p>
                         </div>
 
                         {/* Login Form */}
@@ -107,28 +143,28 @@ export function AdminPage() {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            <span>Verifying...</span>
+                                            <span>Authenticating...</span>
                                         </>
                                     ) : (
                                         <>
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                                             </svg>
-                                            <span>Access Admin Panel</span>
+                                            <span>Secure Access</span>
                                         </>
                                     )}
                                 </button>
                             </form>
 
                             {/* Security Notice */}
-                            <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                                 <div className="flex items-start space-x-3">
-                                    <svg className="w-5 h-5 text-orange-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+                                    <svg className="w-5 h-5 text-green-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.586-4.414A2 2 0 0019 5.586L16.414 3A2 2 0 0015 2H9a2 2 0 00-1.414.586L4.586 6A2 2 0 004 7.414V16a2 2 0 001.414 1.414L9 21a2 2 0 001.414 0l3.586-3.586A2 2 0 0015 16V7.414a2 2 0 00-1.414-1.414z" />
                                     </svg>
                                     <div>
-                                        <p className="text-sm font-medium text-orange-800">Authorized Access Only</p>
-                                        <p className="text-sm text-orange-700 mt-1">This area is restricted to authorized personnel for creating event tickets.</p>
+                                        <p className="text-sm font-medium text-green-800">🔒 Secure Authentication</p>
+                                        <p className="text-sm text-green-700 mt-1">Server-side validation with encrypted sessions and environment-based credentials.</p>
                                     </div>
                                 </div>
                             </div>
@@ -147,7 +183,7 @@ export function AdminPage() {
                 <div className="px-4 py-3">
                     {/* Top row - Title and Actions */}
                     <div className="flex items-center justify-between mb-3">
-                        <h1 className="text-lg sm:text-2xl font-bold text-red-600">Admin Panel</h1>
+                        <h1 className="text-lg sm:text-2xl font-bold text-red-600">Secure Admin Panel</h1>
                         <div className="flex items-center space-x-2">
                             <button
                                 onClick={handleLogout}
@@ -174,9 +210,9 @@ export function AdminPage() {
                     <div className="bg-green-50 border border-green-200 rounded-lg p-2 mb-3 sm:hidden">
                         <div className="flex items-center space-x-2">
                             <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                             </svg>
-                            <span className="text-green-800 text-sm font-medium">Admin Access</span>
+                            <span className="text-green-800 text-sm font-medium">🔒 Secure Session</span>
                         </div>
                     </div>
 
@@ -184,11 +220,11 @@ export function AdminPage() {
                     <div className="hidden sm:block bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
                         <div className="flex items-center space-x-2">
                             <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                             </svg>
-                            <span className="text-green-800 text-sm font-medium">Authenticated Admin Access</span>
+                            <span className="text-green-800 text-sm font-medium">🔒 Authenticated Secure Session</span>
                         </div>
-                        <p className="text-green-700 text-sm mt-1">You have access to admin functions</p>
+                        <p className="text-green-700 text-sm mt-1">Server-side validated with automatic expiration</p>
                     </div>
 
                     {/* Improved Mobile-friendly Tabs */}
