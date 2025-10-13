@@ -7,9 +7,9 @@ export function HomePage() {
     const [activeTab, setActiveTab] = useState<"scan" | "list">("scan");
 
     return (
-        <div className="min-h-screen flex flex-col bg-gray-50">
+        <div className="h-full w-full flex flex-col bg-gray-50">
             {/* Mobile-optimized header with proper safe area */}
-            <header className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b shadow-sm">
+            <header className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b shadow-sm flex-shrink-0">
                 <div className="pt-safe-top px-4 py-4">
                     <h1 className="text-xl sm:text-2xl font-bold text-blue-600 text-center mb-4">QR Ticket Scanner</h1>
 
@@ -49,8 +49,8 @@ export function HomePage() {
             </header>
 
             {/* Mobile-optimized main content with proper spacing */}
-            <main className="flex-1 overflow-hidden">
-                <div className="h-full">
+            <main className="flex-1 overflow-hidden relative">
+                <div className="absolute inset-0 w-full h-full">
                     {activeTab === "scan" && <QrScanner />}
                     {activeTab === "list" && <TicketList />}
                 </div>

@@ -103,6 +103,24 @@
   }
 }
 
+/* QR Scanner animations */
+@keyframes scan {
+  0% { 
+    transform: translateY(0); 
+    opacity: 0; 
+  }
+  10% { 
+    opacity: 1; 
+  }
+  90% { 
+    opacity: 1; 
+  }
+  100% { 
+    transform: translateY(100%); 
+    opacity: 0; 
+  }
+}
+
 /* Custom scrollbar for mobile webkit browsers */
 @media (max-width: 768px) {
   ::-webkit-scrollbar {
@@ -141,6 +159,13 @@
 
 .accent-text {
   @apply text-slate-600;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {

@@ -167,6 +167,8 @@ export function QrScanner() {
         returnDetailedScanResult: true,
         highlightScanRegion: true,
         highlightCodeOutline: true,
+        preferredCamera: 'environment', // Use back camera on mobile
+        maxScansPerSecond: 10, // Optimize scanning frequency for better performance
       }
     );
 
@@ -186,115 +188,176 @@ export function QrScanner() {
   }, []); // Remove isActive dependency to prevent recreation
 
   return (
-    <div className="flex-1 relative bg-black">
-      {/* Video Element */}
-      <div className="relative w-full h-full">
+    <div className="h-full w-full relative bg-black overflow-hidden">
+      {/* Video Element - Hardware accelerated */}
+      <div className="absolute inset-0 w-full h-full">
         <video 
           ref={videoRef} 
           className="w-full h-full object-cover"
-          style={{ display: 'block' }}
+          style={{ 
+            display: 'block',
+            transform: 'translateZ(0)',
+            willChange: 'transform'
+          }}
           autoPlay
           playsInline
           muted
         />
       </div>
       
-      {/* Simple Overlay */}
-      <div className="absolute inset-0 flex flex-col">
-        {/* Header */}
-        <div className="bg-black/80 text-white p-4 text-center">
-          <h1 className="text-xl font-bold">QR Scanner</h1>
-          <p className="text-white/90 text-sm">
-            {isProcessing ? "Processing ticket..." : isActive ? "Point camera at QR code" : "Paused after scan"}
-          </p>
+      {/* Modern Overlay UI */}
+      <div className="absolute inset-0 flex flex-col pointer-events-none">
+        {/* Header with Gradient */}
+        <div className="bg-gradient-to-b from-black/90 via-black/60 to-transparent text-white px-6 pt-safe-top pb-8 pointer-events-auto">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold tracking-tight">Live Scanner</h1>
+              <p className="text-white/80 text-sm mt-1">
+                {isProcessing ? "Verifying ticket..." : isActive ? "Point camera at QR code" : "Scanner paused"}
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={isActive ? stopScanner : startScanner}
+                className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all text-xs font-medium active:scale-95"
+              >
+                {isActive ? "Pause" : "Resume"}
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all text-xs font-medium active:scale-95"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Scanning Frame */}
-        <div className="flex-1 flex items-center justify-center p-8">
+        {/* Scanning Frame - Centered */}
+        <div className="flex-1 flex items-center justify-center px-8 pb-safe-bottom">
           <div className="relative">
-            {/* Simple scanning frame */}
-            <div className="w-72 h-72 border-2 border-white relative bg-transparent">
-              {/* Corner markers */}
-              <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-white"></div>
-              <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-white"></div>
-              <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-white"></div>
-              <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-white"></div>
+            {/* Modern scanning frame with rounded corners */}
+            <div className="relative w-72 h-72 sm:w-80 sm:h-80">
+              {/* Animated corner brackets */}
+              <div className="absolute -top-1 -left-1 w-12 h-12 border-t-[3px] border-l-[3px] border-emerald-400 rounded-tl-lg transition-all duration-300"></div>
+              <div className="absolute -top-1 -right-1 w-12 h-12 border-t-[3px] border-r-[3px] border-emerald-400 rounded-tr-lg transition-all duration-300"></div>
+              <div className="absolute -bottom-1 -left-1 w-12 h-12 border-b-[3px] border-l-[3px] border-emerald-400 rounded-bl-lg transition-all duration-300"></div>
+              <div className="absolute -bottom-1 -right-1 w-12 h-12 border-b-[3px] border-r-[3px] border-emerald-400 rounded-br-lg transition-all duration-300"></div>
               
-              {/* Simple scanning line */}
+              {/* Scanning line with animation */}
               {isActive && (
-                <div className="absolute inset-x-0 top-1/2 h-1 bg-green-400"></div>
+                <div className="absolute inset-x-0 top-0 h-full overflow-hidden">
+                  <div 
+                    className="absolute inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-lg shadow-emerald-400/50"
+                    style={{
+                      animation: 'scan 2s ease-in-out infinite',
+                    }}
+                  ></div>
+                </div>
               )}
+              
+              {/* Grid overlay for better focus */}
+              <div className="absolute inset-0 opacity-20">
+                <div className="absolute inset-x-0 top-1/3 h-px bg-white"></div>
+                <div className="absolute inset-x-0 top-2/3 h-px bg-white"></div>
+                <div className="absolute inset-y-0 left-1/3 w-px bg-white"></div>
+                <div className="absolute inset-y-0 left-2/3 w-px bg-white"></div>
+              </div>
+
+              {/* Center crosshair */}
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                <div className="w-8 h-8 border-2 border-white/40 rounded-full"></div>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white/60 rounded-full"></div>
+              </div>
             </div>
             
-            {/* Status message */}
-            <div className="mt-6 text-center">
-              <div className="bg-black/80 px-4 py-2 rounded-lg">
-                <p className="text-white text-sm">
-                  {isProcessing ? "Processing..." : isActive ? "Scanning..." : "Paused"}
-                </p>
+            {/* Status indicator below frame */}
+            <div className="mt-8 text-center pointer-events-auto">
+              <div className="inline-flex items-center space-x-3 bg-black/90 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
+                <div className="relative w-2.5 h-2.5">
+                  <div className={`absolute inset-0 rounded-full ${
+                    isProcessing ? 'bg-blue-500' : 
+                    isActive ? 'bg-emerald-500' : 'bg-amber-500'
+                  }`}></div>
+                  {isActive && (
+                    <div className={`absolute inset-0 rounded-full animate-ping ${
+                      isProcessing ? 'bg-blue-400' : 'bg-emerald-400'
+                    }`}></div>
+                  )}
+                </div>
+                <span className="text-white text-sm font-medium">
+                  {isProcessing ? "Processing" : isActive ? "Active" : "Paused"}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Status Bar */}
-        <div className="bg-black/80 text-white p-4">
+        {/* Bottom Status Bar */}
+        <div className="bg-gradient-to-t from-black/90 via-black/60 to-transparent text-white px-6 pb-safe-bottom pt-6 pointer-events-auto">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className={`w-3 h-3 rounded-full ${
-                isProcessing ? 'bg-blue-500' : 
-                isActive ? 'bg-green-500' : 'bg-yellow-500'
-              }`}></div>
-              <span className="text-sm">
-                {isProcessing ? "Processing" : isActive ? "Active" : "Paused"}
-              </span>
+            <div className="flex-1">
+              {scannedData ? (
+                <div>
+                  <p className="text-xs text-white/60 uppercase tracking-wide">Last Scan</p>
+                  <p className="text-sm font-mono text-white/90 mt-0.5">
+                    {scannedData.slice(0, 16)}...
+                  </p>
+                  <p className="text-xs text-white/50 mt-0.5">
+                    {new Date(lastScanTime).toLocaleTimeString()}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-xs text-white/60 uppercase tracking-wide">Ready</p>
+                  <p className="text-sm text-white/90 mt-0.5">Awaiting first scan</p>
+                </div>
+              )}
             </div>
-            
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm"
-            >
-              Reset
-            </button>
+            <div className="ml-4 px-4 py-2 rounded-lg bg-white/10 backdrop-blur-sm">
+              <p className="text-xs text-white/70 font-medium">Camera Active</p>
+            </div>
           </div>
-          
-          {/* Last scan info */}
-          {scannedData && (
-            <div className="mt-2 text-xs text-gray-400">
-              Last scan: {scannedData.slice(0, 12)}...
-            </div>
-          )}
         </div>
       </div>
 
       {/* Success/Warning Modal */}
-      {showModal && modalData && (
+      {showModal && modalData && (() => {
+        // Helper variables for modal state
+        // Backend returns status="success" with checkinCounter=1 for first scan
+        // Backend returns status="warning" with checkinCounter=2 for second scan
+        // Backend returns status="warning" with checkinCounter=3+ for multiple scans
+        const isFirstCheckIn = modalData.status === "success";
+        const isSecondScan = modalData.status === "warning" && modalData.ticket?.checkinCounter === 2;
+        const isMultipleScan = modalData.status === "warning" && !isSecondScan;
+        
+        return (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4 pt-safe-top pb-safe-bottom">
           <div className="bg-white rounded-xl max-w-sm w-full mx-4 my-8 overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className={`p-6 text-center ${
-              modalData.status === "success" 
+              isFirstCheckIn
                 ? "bg-green-500" 
-                : modalData.status === "warning" 
+                : isSecondScan
                 ? "bg-yellow-500" 
                 : "bg-red-500"
             }`}>
               <div className="w-16 h-16 mx-auto mb-4 bg-white/20 rounded-full flex items-center justify-center">
-                {modalData.status === "success" && (
+                {isFirstCheckIn && (
                   <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
                 )}
-                {modalData.status === "warning" && (
+                {(isSecondScan || isMultipleScan) && (
                   <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v2m0 4h.01" />
                   </svg>
                 )}
               </div>
               <h2 className="text-xl font-bold text-white mb-2">
-                {modalData.status === "success" 
+                {isFirstCheckIn
                   ? "Check-in Successful!" 
-                  : modalData.ticket?.checkinCounter === 1 
+                  : isSecondScan
                     ? "Welcome Back!" 
                     : "Multiple Scan Alert"}
               </h2>
@@ -346,22 +409,22 @@ export function QrScanner() {
                   {/* Status Badge */}
                   <div className="text-center">
                     <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
-                      modalData.status === "success" 
+                      isFirstCheckIn
                         ? "bg-green-100 text-green-800" 
-                        : modalData.ticket?.checkinCounter === 1 
+                        : isSecondScan
                           ? "bg-blue-100 text-blue-800" 
                           : "bg-red-100 text-red-800"
                     }`}>
                       <div className={`w-2 h-2 rounded-full mr-2 ${
-                        modalData.status === "success" 
+                        isFirstCheckIn
                           ? "bg-green-500" 
-                          : modalData.ticket?.checkinCounter === 1 
+                          : isSecondScan
                             ? "bg-blue-500" 
                             : "bg-red-500"
                       }`}></div>
-                      {modalData.status === "success" 
+                      {isFirstCheckIn
                         ? "Newly Checked In" 
-                        : modalData.ticket?.checkinCounter === 1 
+                        : isSecondScan
                           ? "Already Checked In" 
                           : "Multiple Scans"}
                     </div>
@@ -381,7 +444,8 @@ export function QrScanner() {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
              {/* Ticket Not Found Modal */}
        {showNotFoundModal && notFoundCode && (
