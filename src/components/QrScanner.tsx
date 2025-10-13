@@ -321,44 +321,43 @@ export function QrScanner() {
         </div>
       </div>
 
-      {/* Add keyframe animation for scanning line */}
-      <style>{`
-        @keyframes scan {
-          0%, 100% { transform: translateY(0); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateY(288px); opacity: 0; }
-        }
-      `}</style>
-
       {/* Success/Warning Modal */}
-      {showModal && modalData && (
+      {showModal && modalData && (() => {
+        // Helper variables for modal state
+        // Backend returns status="success" with checkinCounter=1 for first scan
+        // Backend returns status="warning" with checkinCounter=2 for second scan
+        // Backend returns status="warning" with checkinCounter=3+ for multiple scans
+        const isFirstCheckIn = modalData.status === "success";
+        const isSecondScan = modalData.status === "warning" && modalData.ticket?.checkinCounter === 2;
+        const isMultipleScan = modalData.status === "warning" && !isSecondScan;
+        
+        return (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4 pt-safe-top pb-safe-bottom">
           <div className="bg-white rounded-xl max-w-sm w-full mx-4 my-8 overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className={`p-6 text-center ${
-              modalData.status === "success" 
+              isFirstCheckIn
                 ? "bg-green-500" 
-                : modalData.status === "warning" 
+                : isSecondScan
                 ? "bg-yellow-500" 
                 : "bg-red-500"
             }`}>
               <div className="w-16 h-16 mx-auto mb-4 bg-white/20 rounded-full flex items-center justify-center">
-                {modalData.status === "success" && (
+                {isFirstCheckIn && (
                   <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
                 )}
-                {modalData.status === "warning" && (
+                {(isSecondScan || isMultipleScan) && (
                   <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v2m0 4h.01" />
                   </svg>
                 )}
               </div>
               <h2 className="text-xl font-bold text-white mb-2">
-                {modalData.status === "success" 
+                {isFirstCheckIn
                   ? "Check-in Successful!" 
-                  : (modalData.status === "warning" && modalData.ticket?.checkinCounter === 2)
+                  : isSecondScan
                     ? "Welcome Back!" 
                     : "Multiple Scan Alert"}
               </h2>
@@ -410,22 +409,22 @@ export function QrScanner() {
                   {/* Status Badge */}
                   <div className="text-center">
                     <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
-                      modalData.status === "success" 
+                      isFirstCheckIn
                         ? "bg-green-100 text-green-800" 
-                        : (modalData.status === "warning" && modalData.ticket?.checkinCounter === 2)
+                        : isSecondScan
                           ? "bg-blue-100 text-blue-800" 
                           : "bg-red-100 text-red-800"
                     }`}>
                       <div className={`w-2 h-2 rounded-full mr-2 ${
-                        modalData.status === "success" 
+                        isFirstCheckIn
                           ? "bg-green-500" 
-                          : (modalData.status === "warning" && modalData.ticket?.checkinCounter === 2)
+                          : isSecondScan
                             ? "bg-blue-500" 
                             : "bg-red-500"
                       }`}></div>
-                      {modalData.status === "success" 
+                      {isFirstCheckIn
                         ? "Newly Checked In" 
-                        : (modalData.status === "warning" && modalData.ticket?.checkinCounter === 2)
+                        : isSecondScan
                           ? "Already Checked In" 
                           : "Multiple Scans"}
                     </div>
@@ -445,7 +444,8 @@ export function QrScanner() {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
              {/* Ticket Not Found Modal */}
        {showNotFoundModal && notFoundCode && (

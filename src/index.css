@@ -101,19 +101,23 @@
     padding-top: max(16px, env(safe-area-inset-top));
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
+}
 
-  /* Performance optimizations for camera/video elements */
-  .gpu-accelerate {
-    transform: translateZ(0);
-    will-change: transform;
-    backface-visibility: hidden;
-    perspective: 1000px;
+/* QR Scanner animations */
+@keyframes scan {
+  0%, 100% { 
+    transform: translateY(0); 
+    opacity: 0; 
   }
-
-  /* Smooth animations with hardware acceleration */
-  .smooth-animate {
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: transform, opacity;
+  10% { 
+    opacity: 1; 
+  }
+  90% { 
+    opacity: 1; 
+  }
+  100% { 
+    transform: translateY(100%); 
+    opacity: 0; 
   }
 }
 
