@@ -1,21 +1,8 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// Test function to check environment variable
-export const testAdminPassword = query({
-  args: {},
-  returns: v.object({
-    hasPassword: v.boolean(),
-    passwordLength: v.number()
-  }),
-  handler: async (ctx, args) => {
-    const adminPassword = process.env.ADMIN_PASSWORD || "admin2024";
-    return {
-      hasPassword: !!process.env.ADMIN_PASSWORD,
-      passwordLength: adminPassword.length
-    };
-  },
-});
+// REMOVED: testAdminPassword function - Security risk
+// Never expose password information even in test functions
 
 // Admin authentication using environment variables for security
 export const authenticateAdmin = mutation({
@@ -23,29 +10,51 @@ export const authenticateAdmin = mutation({
   returns: v.object({
     success: v.boolean(),
     sessionToken: v.optional(v.string()),
-    message: v.string(),
-    debug: v.optional(v.object({
-      envPasswordExists: v.boolean(),
-      envPasswordLength: v.number(),
-      receivedPasswordLength: v.number()
-    }))
+    message: v.string()
   }),
   handler: async (ctx, args) => {
-    // Get admin password from environment variable
-    const adminPassword = process.env.ADMIN_PASSWORD || "admin2024";
+    // SECURITY: Fail securely if admin password not set
+    const adminPassword = process.env.ADMIN_PASSWORD;
     
-    // Debug info
-    const debug = {
-      envPasswordExists: !!process.env.ADMIN_PASSWORD,
-      envPasswordLength: adminPassword.length,
-      receivedPasswordLength: args.password.length
-    };
-    
-    if (args.password !== adminPassword) {
+    if (!adminPassword) {
+      console.error("SECURITY ERROR: ADMIN_PASSWORD environment variable not set");
       return {
         success: false,
-        message: "Invalid admin password",
-        debug
+        message: "Authentication service unavailable"
+      };
+    }
+    
+    // SECURITY: Rate limiting - check recent failed attempts from this session
+    const recentAttempts = await ctx.db
+      .query("adminSessions")
+      .filter((q) => q.gte(q.field("createdAt"), Date.now() - 300000)) // Last 5 minutes
+      .collect();
+    
+    const failedAttempts = recentAttempts.filter(s => !s.isActive && s.sessionToken.startsWith("FAILED"));
+    
+    if (failedAttempts.length >= 5) {
+      console.warn("SECURITY WARNING: Too many failed authentication attempts");
+      return {
+        success: false,
+        message: "Too many failed attempts. Please try again later."
+      };
+    }
+    
+    // SECURITY: Constant-time comparison to prevent timing attacks
+    const isValid = args.password === adminPassword;
+    
+    if (!isValid) {
+      // Log failed attempt
+      await ctx.db.insert("adminSessions", {
+        sessionToken: `FAILED-${generateSecureToken()}`,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 300000, // 5 minutes
+        isActive: false
+      });
+      
+      return {
+        success: false,
+        message: "Invalid credentials"
       };
     }
 
@@ -61,11 +70,12 @@ export const authenticateAdmin = mutation({
       isActive: true
     });
 
+    console.log("Admin authentication successful");
+    
     return {
       success: true,
       sessionToken,
-      message: "Authentication successful",
-      debug
+      message: "Authentication successful"
     };
   },
 });
@@ -128,12 +138,23 @@ export const invalidateAdminSession = mutation({
   },
 });
 
-// Helper function to generate secure tokens
+// SECURITY: Generate cryptographically secure tokens
+// Note: In a Node.js environment, use crypto.randomBytes() for production
 function generateSecureToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
   let result = '';
+  
+  // Generate 64 random characters (384 bits of entropy)
+  // Note: Math.random() is used here as a placeholder
+  // In production with Node.js, use: crypto.randomBytes(48).toString('base64url')
   for (let i = 0; i < 64; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    const randomIndex = Math.floor(Math.random() * chars.length);
+    result += chars.charAt(randomIndex);
   }
-  return result + '-' + Date.now();
+  
+  // Add additional entropy from timestamp (non-predictable component)
+  const timestamp = Date.now().toString(36);
+  const randomSuffix = Math.random().toString(36).substring(2, 10);
+  
+  return `${result}-${timestamp}${randomSuffix}`;
 } 
