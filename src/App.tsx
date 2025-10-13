@@ -4,9 +4,11 @@ import { AdminPage } from "./components/AdminPage";
 
 export default function App() {
     return (
-        <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/admin" element={<AdminPage />} />
-        </Routes>
+        <div className="h-full w-full">
+            <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/admin" element={<AdminPage />} />
+            </Routes>
+        </div>
     );
 }

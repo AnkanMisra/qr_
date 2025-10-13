@@ -101,6 +101,20 @@
     padding-top: max(16px, env(safe-area-inset-top));
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
+
+  /* Performance optimizations for camera/video elements */
+  .gpu-accelerate {
+    transform: translateZ(0);
+    will-change: transform;
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+
+  /* Smooth animations with hardware acceleration */
+  .smooth-animate {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity;
+  }
 }
 
 /* Custom scrollbar for mobile webkit browsers */
@@ -141,6 +155,13 @@
 
 .accent-text {
   @apply text-slate-600;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
