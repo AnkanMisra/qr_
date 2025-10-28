@@ -53,6 +53,12 @@ export function AdminTicketsView() {
   const checkedInTickets = tickets.filter(t => t.isCheckedIn).length;
   const pendingTickets = totalTickets - checkedInTickets;
   const totalScans = tickets.reduce((sum, t) => sum + (t.checkinCounter || 0), 0);
+  const uniqueScanners = tickets.reduce((set, t) => {
+    if (t.scannedBy) {
+      set.add(t.scannedBy);
+    }
+    return set;
+  }, new Set<string>()).size;
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
@@ -61,7 +67,7 @@ export function AdminTicketsView() {
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Admin Tickets Overview</h2>
         
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="text-2xl font-bold text-blue-600">{totalTickets}</div>
             <div className="text-sm text-blue-800">Total Tickets</div>
@@ -77,6 +83,10 @@ export function AdminTicketsView() {
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
             <div className="text-2xl font-bold text-purple-600">{totalScans}</div>
             <div className="text-sm text-purple-800">Total Scans</div>
+          </div>
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+            <div className="text-2xl font-bold text-indigo-600">{uniqueScanners}</div>
+            <div className="text-sm text-indigo-800">Active Scanners</div>
           </div>
         </div>
 
@@ -170,6 +180,7 @@ export function AdminTicketsView() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scans</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in Time</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scanned By</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -192,7 +203,7 @@ export function AdminTicketsView() {
                               ? "bg-green-100 text-green-800"
                               : "bg-yellow-100 text-yellow-800"
                           }`}>
-                            {ticket.isCheckedIn ? "✓ Checked In" : "⏳ Pending"}
+                            {ticket.isCheckedIn ? "✓ Checked In" : "Pending"}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -223,6 +234,18 @@ export function AdminTicketsView() {
                             )}
                           </div>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {ticket.scannedBy ? (
+                              <span className="inline-flex items-center gap-1">
+                                <span className="inline-block h-2 w-2 rounded-full bg-green-500"></span>
+                                {ticket.scannedBy}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -245,7 +268,7 @@ export function AdminTicketsView() {
                           ? "bg-green-100 text-green-800"
                           : "bg-yellow-100 text-yellow-800"
                       }`}>
-                        {ticket.isCheckedIn ? "✓ Checked In" : "⏳ Pending"}
+                        {ticket.isCheckedIn ? "✓ Checked In" : " Pending"}
                       </span>
                     </div>
                     
@@ -264,6 +287,10 @@ export function AdminTicketsView() {
                       <div className="flex justify-between">
                         <span className="text-gray-500">Created:</span>
                         <span>{new Date(ticket._creationTime).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Scanned by:</span>
+                        <span>{ticket.scannedBy ?? "—"}</span>
                       </div>
                       {ticket.checkedInAt && (
                         <div className="flex justify-between">

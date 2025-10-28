@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
@@ -10,154 +10,148 @@ export function TicketList() {
   // Keyboard shortcut to focus search (Ctrl/Cmd + K)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   // Filter tickets based on search term
-  const filteredTickets = tickets.filter((ticket) =>
-    ticket.teamName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredTickets = useMemo(() => {
+    const normalized = searchTerm.toLowerCase().trim();
+    if (!normalized) {
+      return tickets;
+    }
+    return tickets.filter((ticket) =>
+      ticket.teamName.toLowerCase().includes(normalized),
+    );
+  }, [searchTerm, tickets]);
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-hidden">
-        <div className="h-full overflow-y-auto">
-          <div className="px-4 pt-4 pb-safe-bottom">
-            {/* Mobile header */}
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 text-center">All Tickets</h2>
-              <p className="text-sm text-gray-600 text-center mt-1">
-                {tickets.length} ticket{tickets.length !== 1 ? 's' : ''} total
-              </p>
-            </div>
-            
-            {/* Mobile search input */}
-            <div className="mb-6">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search by team name..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-11 pr-11 py-3 text-base border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    <svg className="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-              {/* Mobile search tip */}
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Tip: Press Ctrl+K to quickly search
-              </p>
-            </div>
-              
-            {/* Mobile search results counter */}
+    <div className="h-full overflow-y-auto bg-gray-50">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-3 py-5 pb-safe-bottom">
+        <div className="text-center space-y-1">
+          <h2 className="text-lg font-semibold text-gray-900">All tickets</h2>
+          <p className="text-xs text-gray-500">
+            {tickets.length} ticket{tickets.length === 1 ? "" : "s"} in the system
+          </p>
+        </div>
+
+        <div>
+          <div className="relative">
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search by team name"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-0"
+            />
             {searchTerm && (
-              <div className="mb-4 px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
-                <p className="text-sm text-blue-800 text-center">
-                  Found <span className="font-bold">{filteredTickets.length}</span> ticket{filteredTickets.length !== 1 ? 's' : ''} matching "<span className="font-semibold">{searchTerm}</span>"
-                </p>
-              </div>
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute inset-y-0 right-0 px-4 text-xs font-medium text-gray-500 hover:text-gray-800"
+              >
+                Clear
+              </button>
             )}
-            
-            {/* Mobile-optimized ticket list */}
-            <div className="space-y-4">
-              {tickets.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <p className="text-gray-500 text-lg">No tickets created yet</p>
-                  <p className="text-gray-400 text-sm mt-1">Tickets will appear here once created</p>
-                </div>
-              ) : filteredTickets.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                  <p className="text-gray-500 text-lg">No tickets found</p>
-                  <p className="text-gray-400 text-sm mt-1">No tickets match "{searchTerm}"</p>
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 transition-colors"
-                  >
-                    Clear search
-                  </button>
-                </div>
-              ) : (
-                filteredTickets.map((ticket) => (
-                  <div
-                    key={ticket._id}
-                    className={`bg-white rounded-xl p-5 shadow-sm border-l-4 ${
-                      ticket.isCheckedIn
-                        ? "border-green-500"
-                        : "border-yellow-500"
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-gray-900 text-lg mb-1 truncate">{ticket.teamName}</h3>
-                        <p className="text-gray-600 mb-2">Leader: {ticket.leaderName}</p>
-                        <p className="text-xs text-gray-500 font-mono bg-gray-50 px-2 py-1 rounded truncate">
-                          {ticket.uniqueId}
-                        </p>
-                        {ticket.checkinCounter !== undefined && ticket.checkinCounter > 0 && (
-                          <p className="text-sm text-gray-600 mt-2">
-                            Scans: <span className="font-semibold">{ticket.checkinCounter}</span>
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right flex flex-col items-end ml-4">
+          </div>
+          <p className="mt-1 text-[11px] text-gray-500 text-center">
+            Press Ctrl + K to focus search
+          </p>
+        </div>
+
+        {tickets.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-8 text-center">
+            <p className="text-sm font-medium text-gray-600">
+              No tickets yet
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              Tickets created by admin will appear here instantly.
+            </p>
+          </div>
+        ) : filteredTickets.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-blue-200 bg-blue-50 p-8 text-center">
+            <p className="text-sm font-medium text-blue-700">
+              No matches for “{searchTerm}”
+            </p>
+            <button
+              onClick={() => setSearchTerm("")}
+              className="mt-3 rounded-lg border border-blue-200 px-4 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+            >
+              Reset search
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredTickets.map((ticket) => {
+              const membersLabel =
+                ticket.teamMemberCount !== undefined
+                  ? `${ticket.teamMemberCount} member${
+                      ticket.teamMemberCount === 1 ? "" : "s"
+                    }`
+                  : undefined;
+
+              return (
+                <div
+                  key={ticket._id}
+                  className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm">
                         <span
-                          className={`inline-flex px-3 py-1 text-sm font-bold rounded-full mb-2 ${
-                            ticket.isCheckedIn
-                              ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
+                          className={`inline-flex h-2 w-2 rounded-full ${
+                            ticket.isCheckedIn ? "bg-green-500" : "bg-amber-500"
                           }`}
-                        >
-                          {ticket.isCheckedIn ? "✓ Checked In" : "⏳ Pending"}
-                        </span>
-                        {ticket.isCheckedIn && ticket.checkedInAt && (
-                          <p className="text-xs text-gray-500 text-right">
-                            {new Date(ticket.checkedInAt).toLocaleDateString()} at{' '}
-                            {new Date(ticket.checkedInAt).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                        )}
+                        ></span>
+                        <h3 className="text-base font-semibold text-gray-900">
+                          {ticket.teamName}
+                        </h3>
                       </div>
+                      <div className="text-xs text-gray-600">
+                        Leader: <span className="font-medium text-gray-800">{ticket.leaderName}</span>
+                        {membersLabel && <span className="ml-2">• {membersLabel}</span>}
+                      </div>
+                      <p className="text-[11px] font-mono text-gray-400">
+                        {ticket.uniqueId}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1 text-xs text-gray-500">
+                      <span
+                        className={`inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
+                          ticket.isCheckedIn
+                            ? "bg-green-100 text-green-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {ticket.isCheckedIn ? "Checked in" : "Pending"}
+                      </span>
+                      {ticket.isCheckedIn && ticket.checkedInAt && (
+                        <p>
+                          {new Date(ticket.checkedInAt).toLocaleString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      )}
+                      {ticket.checkinCounter !== undefined && ticket.checkinCounter > 0 && (
+                        <p>Scans: {ticket.checkinCounter}</p>
+                      )}
                     </div>
                   </div>
-                ))
-              )}
-            </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
