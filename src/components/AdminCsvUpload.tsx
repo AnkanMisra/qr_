@@ -107,6 +107,15 @@ export function AdminCsvUpload() {
         return;
       }
 
+      // Enforce 5MB file size limit
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      if (file.size > maxSize) {
+        toast.error("File too large", { 
+          description: "Please upload a CSV file smaller than 5MB" 
+        });
+        return;
+      }
+
       parseCsv(file);
     },
     [parseCsv],
@@ -217,7 +226,6 @@ export function AdminCsvUpload() {
           </h2>
           <p className="text-sm text-gray-500">
             Upload a CSV with columns TeamName, TeamLeadName, NumberofMember (2-4).
-            Process to create tickets and download all QR codes as a zip.
           </p>
         </div>
 

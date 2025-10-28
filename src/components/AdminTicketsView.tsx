@@ -1,6 +1,20 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { TicketDetailsModal } from "./TicketDetailsModal";
+
+type Ticket = {
+  _id: string;
+  _creationTime: number;
+  teamName: string;
+  leaderName: string;
+  teamMemberCount: number;
+  uniqueId: string;
+  isCheckedIn: boolean;
+  checkinCounter?: number;
+  checkedInAt?: number;
+  scannedBy?: string;
+};
 
 export function AdminTicketsView() {
   const tickets = useQuery(api.tickets.getAllTickets) || [];
@@ -8,6 +22,7 @@ export function AdminTicketsView() {
   const [filterStatus, setFilterStatus] = useState<"all" | "checked" | "pending">("all");
   const [sortBy, setSortBy] = useState<"recent" | "name" | "checkins">("recent");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
   // Keyboard shortcut to focus search (Ctrl/Cmd + K)
   useEffect(() => {
@@ -53,21 +68,22 @@ export function AdminTicketsView() {
   const checkedInTickets = tickets.filter(t => t.isCheckedIn).length;
   const pendingTickets = totalTickets - checkedInTickets;
   const totalScans = tickets.reduce((sum, t) => sum + (t.checkinCounter || 0), 0);
-  const uniqueScanners = tickets.reduce((set, t) => {
-    if (t.scannedBy) {
-      set.add(t.scannedBy);
-    }
-    return set;
-  }, new Set<string>()).size;
+  
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
+      {/* Modal */}
+      <TicketDetailsModal
+        ticket={selectedTicket}
+        onClose={() => setSelectedTicket(null)}
+      />
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Admin Tickets Overview</h2>
         
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+  {/* Stats Cards */}
+  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="text-2xl font-bold text-blue-600">{totalTickets}</div>
             <div className="text-sm text-blue-800">Total Tickets</div>
@@ -84,10 +100,7 @@ export function AdminTicketsView() {
             <div className="text-2xl font-bold text-purple-600">{totalScans}</div>
             <div className="text-sm text-purple-800">Total Scans</div>
           </div>
-          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-            <div className="text-2xl font-bold text-indigo-600">{uniqueScanners}</div>
-            <div className="text-sm text-indigo-800">Active Scanners</div>
-          </div>
+          
         </div>
 
         {/* Controls */}
@@ -169,35 +182,39 @@ export function AdminTicketsView() {
           ) : (
             <div className="bg-white">
               {/* Desktop Table */}
-              <div className="hidden lg:block">
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 sticky top-0">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leader</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scans</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scanned By</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leader</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket ID</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scans</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in Time</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scanner</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {processedTickets.map((ticket) => (
-                      <tr key={ticket._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
+                      <tr
+                        key={ticket._id}
+                        onClick={() => setSelectedTicket(ticket)}
+                        className="hover:bg-blue-50 cursor-pointer transition-colors"
+                      >
+                        <td className="px-4 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{ticket.teamName}</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{ticket.leaderName}</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap">
                           <div className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
                             {ticket.uniqueId}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                             ticket.isCheckedIn
                               ? "bg-green-100 text-green-800"
@@ -206,22 +223,22 @@ export function AdminTicketsView() {
                             {ticket.isCheckedIn ? "✓ Checked In" : "Pending"}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
+                        <td className="px-3 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 text-center">
                             {ticket.checkinCounter || 0}
                             {(ticket.checkinCounter || 0) > 1 && (
                               <span className="text-red-500 ml-1">⚠️</span>
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">
                             {new Date(ticket._creationTime).toLocaleDateString()}
                             <br />
                             {new Date(ticket._creationTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">
                             {ticket.checkedInAt ? (
                               <>
@@ -234,7 +251,7 @@ export function AdminTicketsView() {
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
                             {ticket.scannedBy ? (
                               <span className="inline-flex items-center gap-1">
@@ -255,9 +272,13 @@ export function AdminTicketsView() {
               {/* Mobile Cards */}
               <div className="lg:hidden p-4 space-y-4">
                 {processedTickets.map((ticket) => (
-                  <div key={ticket._id} className={`bg-white rounded-lg p-4 border-l-4 shadow-sm ${
-                    ticket.isCheckedIn ? "border-green-500" : "border-yellow-500"
-                  }`}>
+                  <div
+                    key={ticket._id}
+                    onClick={() => setSelectedTicket(ticket)}
+                    className={`bg-white rounded-lg p-4 border-l-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow ${
+                      ticket.isCheckedIn ? "border-green-500" : "border-yellow-500"
+                    }`}
+                  >
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h3 className="font-bold text-gray-900 text-lg">{ticket.teamName}</h3>
