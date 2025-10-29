@@ -45,7 +45,7 @@ export function QrScanner() {
       lastProcessedQRRef.current === qrData ||
       now - lastScanTime < 2000
     ) {
-      console.log("🚫 Skipping duplicate, processing, or rapid scan:", qrData);
+      console.log(" Skipping duplicate, processing, or rapid scan:", qrData);
       return;
     }
 
@@ -154,7 +154,7 @@ export function QrScanner() {
         .start()
         .then(() => {
           setIsActive(true);
-          console.log("✅ QR Scanner started manually");
+          console.log(" QR Scanner started manually");
         })
         .catch((err) => {
           console.error("❌ Failed to start scanner:", err);
@@ -167,7 +167,7 @@ export function QrScanner() {
     if (qrScannerRef.current) {
       qrScannerRef.current.stop();
       setIsActive(false);
-      console.log("🛑 QR Scanner stopped manually");
+      console.log(" QR Scanner stopped manually");
     }
   };
 
@@ -178,7 +178,7 @@ export function QrScanner() {
     const qrScanner = new QrScannerLib(
       video,
       (result) => {
-        console.log("🎯 QR Code detected:", result.data);
+        console.log("QR Code detected:", result.data);
         setScannedData(result.data);
         if (isActive && !isProcessing) {
           handleQRScan(result.data);
@@ -188,8 +188,8 @@ export function QrScanner() {
         returnDetailedScanResult: true,
         highlightScanRegion: true,
         highlightCodeOutline: true,
-        preferredCamera: "environment", 
-        maxScansPerSecond: 10, 
+        preferredCamera: "environment",
+        maxScansPerSecond: 10,
       },
     );
 
@@ -197,7 +197,7 @@ export function QrScanner() {
     qrScanner
       .start()
       .then(() => {
-        console.log("✅ QR Scanner started successfully");
+        console.log("QR Scanner started successfully");
       })
       .catch((err) => {
         console.error("❌ QR Scanner failed to start:", err);
@@ -205,7 +205,7 @@ export function QrScanner() {
       });
 
     return () => {
-      console.log("🧹 Cleaning up QR Scanner");
+      console.log("Cleaning up QR Scanner");
       qrScanner.stop();
       qrScanner.destroy();
     };

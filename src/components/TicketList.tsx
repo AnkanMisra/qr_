@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
 export function TicketList() {
   const tickets = useQuery(api.tickets.getAllTickets) || [];
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Keyboard shortcut to focus search (Ctrl/Cmd + K)
@@ -20,16 +21,41 @@ export function TicketList() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Debounce search term to reduce re-renders
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   // Filter tickets based on search term
   const filteredTickets = useMemo(() => {
-    const normalized = searchTerm.toLowerCase().trim();
+    const normalized = debouncedSearchTerm.toLowerCase().trim();
     if (!normalized) {
       return tickets;
     }
     return tickets.filter((ticket) =>
       ticket.teamName.toLowerCase().includes(normalized),
     );
-  }, [searchTerm, tickets]);
+  }, [debouncedSearchTerm, tickets]);
+
+  // Memoized event handlers to prevent child re-renders
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchTerm(e.target.value);
+    },
+    [],
+  );
+
+  const clearSearch = useCallback(() => {
+    setSearchTerm("");
+    setDebouncedSearchTerm("");
+  }, []);
+
+  // Loading state
+  const isLoading = tickets.length === 0;
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50">
@@ -37,7 +63,8 @@ export function TicketList() {
         <div className="text-center space-y-1">
           <h2 className="text-lg font-semibold text-gray-900">All tickets</h2>
           <p className="text-xs text-gray-500">
-            {tickets.length} ticket{tickets.length === 1 ? "" : "s"} in the system
+            {tickets.length} ticket{tickets.length === 1 ? "" : "s"} in the
+            system
           </p>
         </div>
 
@@ -48,12 +75,12 @@ export function TicketList() {
               type="text"
               placeholder="Search by team name"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
               className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-0"
             />
             {searchTerm && (
               <button
-                onClick={() => setSearchTerm("")}
+                onClick={clearSearch}
                 className="absolute inset-y-0 right-0 px-4 text-xs font-medium text-gray-500 hover:text-gray-800"
               >
                 Clear
@@ -67,9 +94,7 @@ export function TicketList() {
 
         {tickets.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-8 text-center">
-            <p className="text-sm font-medium text-gray-600">
-              No tickets yet
-            </p>
+            <p className="text-sm font-medium text-gray-600">No tickets yet</p>
             <p className="mt-1 text-xs text-gray-500">
               Tickets created by admin will appear here instantly.
             </p>
@@ -77,10 +102,10 @@ export function TicketList() {
         ) : filteredTickets.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-blue-200 bg-blue-50 p-8 text-center">
             <p className="text-sm font-medium text-blue-700">
-              No matches for “{searchTerm}”
+              No matches for “{debouncedSearchTerm}”
             </p>
             <button
-              onClick={() => setSearchTerm("")}
+              onClick={clearSearch}
               className="mt-3 rounded-lg border border-blue-200 px-4 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
             >
               Reset search
@@ -114,8 +139,13 @@ export function TicketList() {
                         </h3>
                       </div>
                       <div className="text-xs text-gray-600">
-                        Leader: <span className="font-medium text-gray-800">{ticket.leaderName}</span>
-                        {membersLabel && <span className="ml-2">• {membersLabel}</span>}
+                        Leader:{" "}
+                        <span className="font-medium text-gray-800">
+                          {ticket.leaderName}
+                        </span>
+                        {membersLabel && (
+                          <span className="ml-2">• {membersLabel}</span>
+                        )}
                       </div>
                       <p className="text-[11px] font-mono text-gray-400">
                         {ticket.uniqueId}
@@ -134,17 +164,21 @@ export function TicketList() {
                       </span>
                       {ticket.isCheckedIn && ticket.checkedInAt && (
                         <p>
-                          {new Date(ticket.checkedInAt).toLocaleString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          {new Date(ticket.checkedInAt).toLocaleString(
+                            undefined,
+                            {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}
                         </p>
                       )}
-                      {ticket.checkinCounter !== undefined && ticket.checkinCounter > 0 && (
-                        <p>Scans: {ticket.checkinCounter}</p>
-                      )}
+                      {ticket.checkinCounter !== undefined &&
+                        ticket.checkinCounter > 0 && (
+                          <p>Scans: {ticket.checkinCounter}</p>
+                        )}
                     </div>
                   </div>
                 </div>
