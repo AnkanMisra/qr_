@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { X, Download, Calendar, User, Hash, CheckCircle, Clock, ScanLine, Users } from "lucide-react";
+import {
+  X,
+  Download,
+  Calendar,
+  User,
+  Hash,
+  CheckCircle,
+  Clock,
+  ScanLine,
+  Users,
+} from "lucide-react";
 
 interface Ticket {
   _id: string;
@@ -20,7 +30,10 @@ interface TicketDetailsModalProps {
   onClose: () => void;
 }
 
-export function TicketDetailsModal({ ticket, onClose }: TicketDetailsModalProps) {
+export function TicketDetailsModal({
+  ticket,
+  onClose,
+}: TicketDetailsModalProps) {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,7 +62,9 @@ export function TicketDetailsModal({ ticket, onClose }: TicketDetailsModalProps)
     const link = document.createElement("a");
     link.download = `${ticket.teamName.replace(/\s+/g, "_")}_QR.png`;
     link.href = qrCodeDataUrl;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   };
 
   if (!ticket) return null;
@@ -63,24 +78,28 @@ export function TicketDetailsModal({ ticket, onClose }: TicketDetailsModalProps)
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
         <div
-          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] sm:max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200 rounded-t-2xl">
+          <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 rounded-t-2xl">
             <div className="flex items-start justify-between">
               <div className="flex-1 text-center">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">{ticket.teamName}</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                  {ticket.teamName}
+                </h2>
                 <div className="space-y-1 flex flex-col items-center">
                   <p className="text-sm text-gray-600 flex items-center gap-2">
                     <User className="w-4 h-4" />
-                    <span className="font-medium">Leader:</span> {ticket.leaderName}
+                    <span className="font-medium">TeamLead:</span>{" "}
+                    {ticket.leaderName}
                   </p>
                   <p className="text-sm text-gray-600 flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    <span className="font-medium">Members:</span> {ticket.teamMemberCount}
+                    <span className="font-medium">Member:</span>{" "}
+                    {ticket.teamMemberCount}
                   </p>
                 </div>
               </div>
@@ -94,18 +113,18 @@ export function TicketDetailsModal({ ticket, onClose }: TicketDetailsModalProps)
           </div>
 
           {/* Content */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {/* QR Code Section */}
             <div className="flex flex-col items-center mb-6">
-              <div className="bg-white p-4 rounded-xl border-2 border-gray-200 shadow-sm">
+              <div className="bg-white p-3 sm:p-4 rounded-xl border-2 border-gray-200 shadow-sm">
                 {qrCodeDataUrl ? (
                   <img
                     src={qrCodeDataUrl}
                     alt="QR Code"
-                    className="w-64 h-64"
+                    className="w-48 h-48 sm:w-64 sm:h-64"
                   />
                 ) : (
-                  <div className="w-64 h-64 flex items-center justify-center bg-gray-100 rounded-lg">
+                  <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center bg-gray-100 rounded-lg">
                     <div className="text-gray-400">Generating QR...</div>
                   </div>
                 )}
@@ -167,12 +186,15 @@ export function TicketDetailsModal({ ticket, onClose }: TicketDetailsModalProps)
                     {ticket.checkedInAt ? (
                       <>
                         <div className="text-gray-900 font-semibold">
-                          {new Date(ticket.checkedInAt).toLocaleDateString("en-US", {
-                            weekday: "short",
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
+                          {new Date(ticket.checkedInAt).toLocaleDateString(
+                            "en-US",
+                            {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            },
+                          )}
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
                           {new Date(ticket.checkedInAt).toLocaleTimeString([], {
@@ -204,15 +226,19 @@ export function TicketDetailsModal({ ticket, onClose }: TicketDetailsModalProps)
               ) : (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
                   <Clock className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
-                  <p className="text-yellow-800 font-medium">Not Checked In Yet</p>
-                  <p className="text-yellow-600 text-sm mt-1">This ticket has not been scanned</p>
+                  <p className="text-yellow-800 font-medium">
+                    Not Checked In Yet
+                  </p>
+                  <p className="text-yellow-600 text-sm mt-1">
+                    This ticket has not been scanned
+                  </p>
                 </div>
               )}
             </div>
           </div>
 
           {/* Footer */}
-          <div className="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-200 rounded-b-2xl">
+          <div className="sticky bottom-0 bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 rounded-b-2xl">
             <button
               onClick={onClose}
               className="w-full bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg hover:bg-gray-300 transition-colors font-medium"
