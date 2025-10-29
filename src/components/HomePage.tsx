@@ -13,10 +13,10 @@ export function HomePage() {
     <div className="h-full w-full flex flex-col bg-gray-50">
       {/* Mobile-optimized header with proper safe area */}
       <header className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b shadow-sm flex-shrink-0">
-        <div className="pt-safe-top px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl sm:text-2xl font-bold text-blue-600 flex-1 text-center">
-              QR Ticket Scanner
+        <div className="pt-safe-top px-4 py-1">
+          <div className="flex items-center justify-between mb-1">
+            <h1 className="text-base font-bold text-blue-600 flex-1 text-center">
+              Vibrant Ticket Scanner
             </h1>
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-lg">
@@ -36,7 +36,7 @@ export function HomePage() {
           </div>
 
           {/* Mobile scanner name display */}
-          <div className="flex sm:hidden items-center justify-center gap-2 mb-4 px-3 py-1 bg-blue-50 rounded-lg">
+          <div className="flex sm:hidden items-center justify-center gap-2 mb-1 px-3 py-1 bg-blue-50 rounded-lg">
             <User className="w-4 h-4 text-blue-600" />
             <span className="text-sm font-medium text-blue-800">
               {scannerName}
@@ -44,18 +44,18 @@ export function HomePage() {
           </div>
 
           {/* Mobile-optimized tab navigation */}
-          <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+          <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
             <button
               onClick={() => setActiveTab("scan")}
-              className={`flex-1 py-3 px-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              className={`flex-1 py-2 px-2 rounded-md text-xs font-medium transition-all duration-200 ${
                 activeTab === "scan"
                   ? "bg-white text-blue-600 shadow-md scale-105"
                   : "text-gray-600 active:scale-95"
               }`}
             >
-              <div className="flex flex-col items-center space-y-1">
+              <div className="flex flex-col items-center space-y-0.5">
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -73,15 +73,15 @@ export function HomePage() {
 
             <button
               onClick={() => setActiveTab("list")}
-              className={`flex-1 py-3 px-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              className={`flex-1 py-2 px-2 rounded-md text-xs font-medium transition-all duration-200 ${
                 activeTab === "list"
                   ? "bg-white text-blue-600 shadow-md scale-105"
                   : "text-gray-600 active:scale-95"
               }`}
             >
-              <div className="flex flex-col items-center space-y-1">
+              <div className="flex flex-col items-center space-y-0.5">
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -108,15 +108,29 @@ export function HomePage() {
         </div>
       </main>
 
-      {/* Mobile-optimized toaster */}
+      {/* Minimal centered toaster */}
       <Toaster
         position="top-center"
         toastOptions={{
           style: {
-            margin: "0 16px",
-            maxWidth: "calc(100vw - 32px)",
+            margin: "env(safe-area-inset-top, 8px) auto 8px auto",
+            maxWidth: "300px",
+            fontSize: "14px",
+            padding: "10px 16px",
+            borderRadius: "8px",
+            fontWeight: "500",
+            backgroundColor: "rgba(0, 0, 0, 0.85)",
+            color: "white",
+            border: "none",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+          },
+          classNames: {
+            toast: "minimal-toast",
+            description: "minimal-toast-description",
           },
         }}
+        expand={false}
+        richColors={false}
       />
     </div>
   );

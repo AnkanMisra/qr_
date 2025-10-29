@@ -27,7 +27,8 @@
   }
 
   /* Improve input experience on mobile */
-  input, textarea {
+  input,
+  textarea {
     /* Prevent zoom on iOS when focusing inputs */
     font-size: 16px;
   }
@@ -69,7 +70,9 @@
 
   /* Full viewport height minus safe areas */
   .vh-screen-safe {
-    height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    height: calc(
+      100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    );
   }
 
   /* Touch-friendly button styles */
@@ -101,23 +104,78 @@
     padding-top: max(16px, env(safe-area-inset-top));
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
+
+  /* Mobile modal optimizations */
+  @media (max-width: 640px) {
+    .modal-mobile {
+      margin: env(safe-area-inset-top) env(safe-area-inset-bottom);
+    }
+
+    /* Prevent modals from extending beyond viewport on mobile */
+    .modal-content {
+      max-height: calc(
+        100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem
+      );
+    }
+
+    /* Minimal toast styles */
+    .minimal-toast {
+      min-height: auto !important;
+      padding: 10px 16px !important;
+      font-size: 14px !important;
+      text-align: center !important;
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+    }
+
+    .minimal-toast-description {
+      font-size: 12px !important;
+      margin-top: 2px !important;
+      text-align: center !important;
+    }
+
+    /* Override sonner's default styles for minimal centered toast */
+    [data-sonner-toaster][data-theme="light"] {
+      --width: 300px;
+      left: 50% !important;
+      transform: translateX(-50%);
+    }
+
+    [data-sonner-toast] {
+      gap: 8px;
+      padding: 10px 16px;
+      justify-content: center;
+      text-align: center;
+    }
+
+    [data-sonner-toast] > [data-title] {
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    [data-sonner-toast] > [data-description] {
+      font-size: 12px;
+      line-height: 1.4;
+    }
+  }
 }
 
 /* QR Scanner animations */
 @keyframes scan {
-  0% { 
-    transform: translateY(0); 
-    opacity: 0; 
+  0% {
+    transform: translateY(0);
+    opacity: 0;
   }
-  10% { 
-    opacity: 1; 
+  10% {
+    opacity: 1;
   }
-  90% { 
-    opacity: 1; 
+  90% {
+    opacity: 1;
   }
-  100% { 
-    transform: translateY(100%); 
-    opacity: 0; 
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
   }
 }
 
@@ -146,7 +204,7 @@
   .hover\:scale-105:hover {
     transform: none;
   }
-  
+
   .active\:scale-95:active {
     transform: scale(0.95);
   }
@@ -161,7 +219,9 @@
   @apply text-slate-600;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   width: 100%;
   margin: 0;

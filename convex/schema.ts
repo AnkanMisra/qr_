@@ -15,7 +15,7 @@ const applicationTables = {
   })
     .index("by_unique_id", ["uniqueId"])
     .index("by_status", ["isCheckedIn"])
-    .index("by_creation_time", ["_creationTime"])
+
     .index("by_checkin_counter", ["checkinCounter"])
     .index("by_scanned_by", ["scannedBy"]),
 

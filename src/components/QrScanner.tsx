@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import QrScannerLib from "qr-scanner";
-import { toast } from "sonner";
 import { TicketNotFoundModal } from "./TicketNotFoundModal";
 import { useScannerAuth } from "../contexts/ScannerAuthContext";
+import { toast } from "sonner";
 
 type TicketResult = {
   status: "success" | "warning" | "error";
@@ -24,6 +24,8 @@ export function QrScanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const qrScannerRef = useRef<QrScannerLib | null>(null);
   const isProcessingRef = useRef(false);
+  const showModalRef = useRef(false);
+  const showNotFoundModalRef = useRef(false);
   const lastProcessedQRRef = useRef<string>("");
   const [scannedData, setScannedData] = useState<string>("");
   const [isActive, setIsActive] = useState(true);
@@ -36,116 +38,126 @@ export function QrScanner() {
   const [lastScanTime, setLastScanTime] = useState<number>(0);
   const scanTicket = useMutation(api.tickets.scanTicket);
 
-  const handleQRScan = async (qrData: string) => {
-    const now = Date.now();
+  // Reset last processed QR after a delay to allow re-scanning the same code
+  const resetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Prevent duplicate processing of the same QR code or rapid scans
-    if (
-      isProcessingRef.current ||
-      lastProcessedQRRef.current === qrData ||
-      now - lastScanTime < 2000
-    ) {
-      console.log(" Skipping duplicate, processing, or rapid scan:", qrData);
-      return;
-    }
+  const resetLastProcessedQR = useCallback(() => {
+    setLastProcessedQR("");
+    lastProcessedQRRef.current = "";
+  }, []);
 
-    setLastScanTime(now);
+  useEffect(() => {
+    return () => {
+      // Clean up any pending reset timeout
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current);
+      }
+    };
+  }, []);
 
-    // Immediately stop the scanner to prevent rapid-fire scans
-    if (qrScannerRef.current) {
-      qrScannerRef.current.stop();
-    }
+  // Update refs when state changes
+  useEffect(() => {
+    showModalRef.current = showModal;
+  }, [showModal]);
 
-    setIsProcessing(true);
-    isProcessingRef.current = true;
-    setLastProcessedQR(qrData);
-    lastProcessedQRRef.current = qrData;
-    setIsActive(false);
+  useEffect(() => {
+    showNotFoundModalRef.current = showNotFoundModal;
+  }, [showNotFoundModal]);
 
-    try {
-      console.log("🎫 Processing ticket:", qrData);
+  const handleQRScan = useCallback(
+    async (qrData: string) => {
+      const now = Date.now();
 
-      const result = await scanTicket({
-        uniqueId: qrData,
-        timestamp: Date.now(),
-        scannedBy: scannerName || "Unknown Scanner",
-      });
-
-      if (result.status === "success") {
-        // Show success modal
-        setModalData(result as TicketResult);
-        setShowModal(true);
-        void toast.success(result.message, {
-          description: `Team: ${result.ticket?.teamName} | Leader: ${result.ticket?.leaderName}`,
-          duration: 4000,
-        });
-      } else if (result.status === "warning") {
-        // Show warning modal for already checked in tickets
-        setModalData(result as TicketResult);
-        setShowModal(true);
-        void toast.warning(result.message, {
-          description: `Team: ${result.ticket?.teamName} | Already checked in`,
-          duration: 4000,
-        });
-      } else {
-        // Show ticket not found modal for error cases
-        setNotFoundCode(qrData);
-        setShowNotFoundModal(true);
-        void toast.error(result.message, { duration: 4000 });
+      // Prevent duplicate processing of the same QR code
+      if (isProcessingRef.current || lastProcessedQRRef.current === qrData) {
+        // Skip duplicate or processing scan
+        return;
       }
 
-      // Restart scanner after processing with delay
-      setTimeout(() => {
-        if (qrScannerRef.current && !showModal && !showNotFoundModal) {
-          qrScannerRef.current.start();
+      setLastScanTime(now);
+
+      // Immediately stop the scanner to prevent rapid-fire scans
+      if (qrScannerRef.current) {
+        void qrScannerRef.current.stop();
+      }
+
+      setIsProcessing(true);
+      isProcessingRef.current = true;
+      setLastProcessedQR(qrData);
+      lastProcessedQRRef.current = qrData;
+      setIsActive(false);
+
+      try {
+        const result = await scanTicket({
+          uniqueId: qrData,
+          timestamp: Date.now(),
+          scannedBy: scannerName || "Unknown Scanner",
+        });
+
+        if (result.status === "success") {
+          // Show success modal
+          setModalData(result as TicketResult);
+          setShowModal(true);
+        } else if (result.status === "warning") {
+          // Show warning modal for already checked in tickets
+          setModalData(result as TicketResult);
+          setShowModal(true);
+        } else {
+          // Show ticket not found modal for error cases
+          setNotFoundCode(qrData);
+          setShowNotFoundModal(true);
         }
-        setIsActive(true);
-        setLastProcessedQR(""); // Reset after pause
-        lastProcessedQRRef.current = "";
-      }, 3000);
-    } catch (err) {
-      console.error("❌ Ticket processing failed:", err);
-      // Show not found modal for processing errors too
-      setNotFoundCode(qrData);
-      setShowNotFoundModal(true);
-      void toast.error("Failed to process ticket");
-      setLastProcessedQR(""); // Reset on error
-      lastProcessedQRRef.current = "";
-      // Restart scanner on error
-      setTimeout(() => {
-        if (qrScannerRef.current && !showNotFoundModal) {
-          qrScannerRef.current.start();
-        }
-        setIsActive(true);
-      }, 2000);
-    } finally {
-      setIsProcessing(false);
-      isProcessingRef.current = false;
-    }
-  };
+      } catch (err) {
+        console.error("❌ Ticket processing failed:", err);
+        // Show not found modal for processing errors too
+        setNotFoundCode(qrData);
+        setShowNotFoundModal(true);
+      } finally {
+        setIsProcessing(false);
+        isProcessingRef.current = false;
+        // Allow re-scanning the same QR code after 5 seconds
+        resetTimeoutRef.current = setTimeout(resetLastProcessedQR, 5000);
+      }
+    },
+    [scanTicket, scannerName, resetLastProcessedQR], // Include resetLastProcessedQR dependency
+  );
 
   const closeModal = () => {
     setShowModal(false);
     setModalData(null);
-    // Restart scanner when modal closes
+    // Reset processing states only (keep lastProcessedQR to prevent immediate re-scan)
+    setIsActive(true);
+    setIsProcessing(false);
+    isProcessingRef.current = false;
+
+    // Restart scanner with a small delay to ensure DOM is ready
     setTimeout(() => {
       if (qrScannerRef.current) {
-        qrScannerRef.current.start();
+        qrScannerRef.current
+          .start()
+          .then(() => {})
+          .catch((err) => console.error("Failed to restart scanner:", err));
       }
-      setIsActive(true);
-    }, 500);
+    }, 100);
   };
 
   const closeNotFoundModal = () => {
     setShowNotFoundModal(false);
     setNotFoundCode("");
-    // Restart scanner when modal closes
+    // Reset processing states only (keep lastProcessedQR to prevent immediate re-scan)
+    setIsActive(true);
+    setIsProcessing(false);
+    isProcessingRef.current = false;
+
+    // Restart scanner with a small delay to ensure DOM is ready
     setTimeout(() => {
       if (qrScannerRef.current) {
-        qrScannerRef.current.start();
+        qrScannerRef.current
+          .start()
+          .then(() => {})
+          .catch((err) => console.error("Failed to restart scanner:", err));
       }
-      setIsActive(true);
-    }, 500);
+    }, 100);
   };
 
   const startScanner = () => {
@@ -154,7 +166,6 @@ export function QrScanner() {
         .start()
         .then(() => {
           setIsActive(true);
-          console.log(" QR Scanner started manually");
         })
         .catch((err) => {
           console.error("❌ Failed to start scanner:", err);
@@ -165,9 +176,8 @@ export function QrScanner() {
 
   const stopScanner = () => {
     if (qrScannerRef.current) {
-      qrScannerRef.current.stop();
+      void qrScannerRef.current.stop();
       setIsActive(false);
-      console.log(" QR Scanner stopped manually");
     }
   };
 
@@ -175,53 +185,79 @@ export function QrScanner() {
     if (!videoRef.current) return;
 
     const video = videoRef.current;
+
+    // Ensure video element is ready
+    video.setAttribute("playsinline", "");
+    video.setAttribute("muted", "");
+    video.setAttribute("autoplay", "");
+
     const qrScanner = new QrScannerLib(
       video,
       (result) => {
-        console.log("QR Code detected:", result.data);
         setScannedData(result.data);
-        if (isActive && !isProcessing) {
+        // Only process if no modal is showing
+        if (
+          isActive &&
+          !isProcessingRef.current &&
+          !showModalRef.current &&
+          !showNotFoundModalRef.current
+        ) {
           handleQRScan(result.data);
         }
       },
       {
         returnDetailedScanResult: true,
-        highlightScanRegion: true,
-        highlightCodeOutline: true,
+        highlightScanRegion: false,
+        highlightCodeOutline: false,
         preferredCamera: "environment",
-        maxScansPerSecond: 10,
+        maxScansPerSecond: 30,
       },
     );
 
     qrScannerRef.current = qrScanner;
-    qrScanner
-      .start()
-      .then(() => {
-        console.log("QR Scanner started successfully");
-      })
-      .catch((err) => {
+
+    // Start scanner with better error handling
+    const startScanner = async () => {
+      try {
+        await qrScanner.start();
+        setIsActive(true);
+      } catch (err) {
         console.error("❌ QR Scanner failed to start:", err);
-        toast.error("Camera access failed. Please allow camera permissions.");
-      });
+        setIsActive(false);
+
+        // Try to request camera permissions
+        try {
+          await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+          });
+          // If successful, try starting scanner again
+          setTimeout(() => {
+            qrScanner.start().catch((e) => console.error("Retry failed:", e));
+          }, 1000);
+        } catch (permErr) {
+          console.error("Camera permission denied:", permErr);
+        }
+      }
+    };
+
+    startScanner();
 
     return () => {
-      console.log("Cleaning up QR Scanner");
       qrScanner.stop();
       qrScanner.destroy();
     };
-  }, [handleQRScan, isActive, isProcessing]);
+  }, [handleQRScan]); // Add handleQRScan dependency
 
   return (
     <div className="h-full w-full relative bg-black overflow-hidden">
-      {/* Video Element - Hardware accelerated */}
-      <div className="absolute inset-0 w-full h-full">
+      {/* Video Element - Clean display */}
+      <div className="absolute inset-0 w-full h-full bg-black">
         <video
           ref={videoRef}
           className="w-full h-full object-cover"
           style={{
             display: "block",
-            transform: "translateZ(0)",
-            willChange: "transform",
+            transform: "scaleX(-1)",
           }}
           autoPlay
           playsInline
@@ -232,13 +268,13 @@ export function QrScanner() {
       {/* Modern Overlay UI */}
       <div className="absolute inset-0 flex flex-col pointer-events-none">
         {/* Header with Gradient */}
-        <div className="bg-gradient-to-b from-black/90 via-black/60 to-transparent text-white px-6 pt-safe-top pb-8 pointer-events-auto">
+        <div className="bg-gradient-to-b from-black/90 via-black/60 to-transparent text-white px-4 pt-safe-top pb-4 sm:px-6 sm:pb-8 pointer-events-auto">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h1 className="text-2xl font-bold tracking-tight">
+              <h1 className="text-lg sm:text-2xl font-bold tracking-tight">
                 Live Scanner
               </h1>
-              <p className="text-white/80 text-sm mt-1">
+              <p className="text-white/80 text-xs sm:text-sm mt-0.5">
                 {isProcessing
                   ? "Verifying ticket..."
                   : isActive
@@ -246,16 +282,16 @@ export function QrScanner() {
                     : "Scanner paused"}
               </p>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1.5 sm:space-x-2">
               <button
                 onClick={isActive ? stopScanner : startScanner}
-                className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all text-xs font-medium active:scale-95"
+                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all text-xs font-medium active:scale-95"
               >
                 {isActive ? "Pause" : "Resume"}
               </button>
               <button
                 onClick={() => window.location.reload()}
-                className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all text-xs font-medium active:scale-95"
+                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all text-xs font-medium active:scale-95"
               >
                 Reset
               </button>
@@ -264,10 +300,10 @@ export function QrScanner() {
         </div>
 
         {/* Scanning Frame - Centered */}
-        <div className="flex-1 flex items-center justify-center px-8 pb-safe-bottom">
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-8 pb-safe-bottom">
           <div className="relative">
-            {/* Modern scanning frame with rounded corners */}
-            <div className="relative w-72 h-72 sm:w-80 sm:h-80">
+            {/* Modern scanning frame with rounded corners - responsive size */}
+            <div className="relative w-56 h-56 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-80 lg:h-80">
               {/* Animated corner brackets */}
               <div className="absolute -top-1 -left-1 w-12 h-12 border-t-[3px] border-l-[3px] border-emerald-400 rounded-tl-lg transition-all duration-300"></div>
               <div className="absolute -top-1 -right-1 w-12 h-12 border-t-[3px] border-r-[3px] border-emerald-400 rounded-tr-lg transition-all duration-300"></div>
@@ -302,8 +338,8 @@ export function QrScanner() {
             </div>
 
             {/* Status indicator below frame */}
-            <div className="mt-8 text-center pointer-events-auto">
-              <div className="inline-flex items-center space-x-3 bg-black/90 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
+            <div className="mt-4 sm:mt-8 text-center pointer-events-auto">
+              <div className="inline-flex items-center space-x-2 sm:space-x-3 bg-black/90 backdrop-blur-md px-3 py-1.5 sm:px-6 sm:py-3 rounded-full border border-white/10">
                 <div className="relative w-2.5 h-2.5">
                   <div
                     className={`absolute inset-0 rounded-full ${
@@ -331,7 +367,7 @@ export function QrScanner() {
         </div>
 
         {/* Bottom Status Bar */}
-        <div className="bg-gradient-to-t from-black/90 via-black/60 to-transparent text-white px-6 pb-safe-bottom pt-6 pointer-events-auto">
+        <div className="bg-gradient-to-t from-black/90 via-black/60 to-transparent text-white px-4 pb-safe-bottom pt-3 sm:px-6 sm:pt-6 pointer-events-auto">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               {scannedData ? (
@@ -339,10 +375,10 @@ export function QrScanner() {
                   <p className="text-xs text-white/60 uppercase tracking-wide">
                     Last Scan
                   </p>
-                  <p className="text-sm font-mono text-white/90 mt-0.5">
+                  <p className="text-xs sm:text-sm font-mono text-white/90 mt-0.5">
                     {scannedData.slice(0, 16)}...
                   </p>
-                  <p className="text-xs text-white/50 mt-0.5">
+                  <p className="text-[10px] sm:text-xs text-white/50 mt-0.5">
                     {new Date(lastScanTime).toLocaleTimeString()}
                   </p>
                 </div>
@@ -351,14 +387,16 @@ export function QrScanner() {
                   <p className="text-xs text-white/60 uppercase tracking-wide">
                     Ready
                   </p>
-                  <p className="text-sm text-white/90 mt-0.5">
+                  <p className="text-xs sm:text-sm text-white/90 mt-0.5">
                     Awaiting first scan
                   </p>
                 </div>
               )}
             </div>
-            <div className="ml-4 px-4 py-2 rounded-lg bg-white/10 backdrop-blur-sm">
-              <p className="text-xs text-white/70 font-medium">Camera Active</p>
+            <div className="ml-2 sm:ml-4 px-2 py-1 sm:px-4 sm:py-2 rounded-lg bg-white/10 backdrop-blur-sm">
+              <p className="text-[10px] sm:text-xs text-white/70 font-medium">
+                Camera Active
+              </p>
             </div>
           </div>
         </div>
@@ -380,11 +418,11 @@ export function QrScanner() {
             modalData.status === "warning" && !isSecondScan;
 
           return (
-            <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4 pt-safe-top pb-safe-bottom">
-              <div className="bg-white rounded-xl max-w-sm w-full mx-4 my-8 overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-3 sm:p-4 pt-safe-top pb-safe-bottom">
+              <div className="bg-white rounded-xl max-w-sm w-full mx-2 sm:mx-4 my-4 sm:my-8 overflow-hidden shadow-2xl max-h-[75vh] sm:max-h-[90vh] overflow-y-auto">
                 {/* Modal Header */}
                 <div
-                  className={`p-6 text-center ${
+                  className={`px-3 py-1 text-center ${
                     isFirstCheckIn
                       ? "bg-green-500"
                       : isSecondScan
@@ -392,79 +430,83 @@ export function QrScanner() {
                         : "bg-red-500"
                   }`}
                 >
-                  <div className="w-16 h-16 mx-auto mb-4 bg-white/20 rounded-full flex items-center justify-center">
-                    {isFirstCheckIn && (
-                      <svg
-                        className="w-8 h-8 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={3}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    )}
-                    {(isSecondScan || isMultipleScan) && (
-                      <svg
-                        className="w-8 h-8 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={3}
-                          d="M12 9v2m0 4h.01"
-                        />
-                      </svg>
-                    )}
+                  <div className="flex items-center justify-center gap-1.5">
+                    <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
+                      {isFirstCheckIn && (
+                        <svg
+                          className="w-3 h-3 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={3}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                      {(isSecondScan || isMultipleScan) && (
+                        <svg
+                          className="w-4 h-4 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={3}
+                            d="M12 9v2m0 4h.01"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <h2 className="text-sm font-bold text-white">
+                      {isFirstCheckIn
+                        ? "Check-in Successful!"
+                        : isSecondScan
+                          ? "Welcome Back!"
+                          : "Multiple Scan Alert"}
+                    </h2>
                   </div>
-                  <h2 className="text-xl font-bold text-white mb-2">
-                    {isFirstCheckIn
-                      ? "Check-in Successful!"
-                      : isSecondScan
-                        ? "Welcome Back!"
-                        : "Multiple Scan Alert"}
-                  </h2>
-                  <p className="text-white/90">{modalData.message}</p>
+                  <p className="text-xs text-white/90">{modalData.message}</p>
                 </div>
 
                 {/* Modal Body - Simplified for mobile */}
-                <div className="p-6 space-y-4">
+                <div className="px-3 py-3 sm:px-6 sm:py-4 space-y-2 sm:space-y-4">
                   {modalData.ticket && (
                     <>
                       {/* Team Information */}
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                        <div className="text-center">
-                          <h3 className="text-lg font-bold text-gray-900 mb-1">
+                      <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-2">
+                        <div className="text-center space-y-2">
+                          <h3 className="text-base font-bold text-gray-900">
                             {modalData.ticket.teamName}
                           </h3>
-                          <p className="text-sm text-gray-600">
-                            Leader: {modalData.ticket.leaderName}
-                          </p>
-                          {modalData.ticket.scannedBy && (
+                          <div className="space-y-1">
                             <p className="text-sm text-gray-600">
-                              Scanned by: {modalData.ticket.scannedBy}
+                              TeamLead: {modalData.ticket.leaderName}
                             </p>
-                          )}
-                          {modalData.ticket.teamMemberCount !== undefined && (
-                            <p className="text-sm text-gray-600">
-                              Team size: {modalData.ticket.teamMemberCount}
-                            </p>
-                          )}
+                            {modalData.ticket.teamMemberCount !== undefined && (
+                              <p className="text-sm text-gray-600">
+                                Member: {modalData.ticket.teamMemberCount}
+                              </p>
+                            )}
+                            {modalData.ticket.scannedBy && (
+                              <p className="text-sm text-gray-600">
+                                Scanned by: {modalData.ticket.scannedBy}
+                              </p>
+                            )}
+                          </div>
                         </div>
 
                         {/* Check-in details */}
-                        <div className="border-t pt-3 space-y-2">
+                        <div className="border-t pt-2 space-y-1 sm:space-y-2">
                           {modalData.ticket.checkedInAt && (
                             <div className="text-center">
                               <p className="text-xs text-gray-500">
-                                Check-in Time
+                                Check-in time
                               </p>
                               <p className="text-sm font-medium text-gray-700">
                                 {new Date(
@@ -525,10 +567,10 @@ export function QrScanner() {
                 </div>
 
                 {/* Modal Footer */}
-                <div className="p-6 pt-0">
+                <div className="px-3 py-3 sm:px-6 sm:py-4">
                   <button
                     onClick={closeModal}
-                    className="w-full bg-blue-600 text-white py-4 px-4 rounded-xl hover:bg-blue-700 transition-colors font-medium text-lg"
+                    className="w-full bg-blue-600 text-white py-2.5 sm:py-4 px-4 rounded-xl hover:bg-blue-700 transition-colors font-medium"
                   >
                     Continue Scanning
                   </button>
