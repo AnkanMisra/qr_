@@ -13,7 +13,7 @@ export function TicketNotFoundModal({
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-3 sm:p-4 pt-safe-top pb-safe-bottom">
-      <div className="bg-white rounded-xl max-w-sm w-full overflow-hidden shadow-2xl max-h-[75vh] sm:max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl max-w-sm w-full shadow-2xl max-h-[75vh] sm:max-h-[90vh] overflow-y-auto">
         {/* Modal Header */}
         <div className="bg-red-500 p-4 sm:p-6 text-center">
           <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 bg-white/20 rounded-full flex items-center justify-center">

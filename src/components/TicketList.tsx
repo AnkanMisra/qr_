@@ -3,7 +3,9 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
 export function TicketList() {
-  const tickets = useQuery(api.tickets.getAllTickets) || [];
+  const ticketsQuery = useQuery(api.tickets.getAllTickets);
+  const isLoading = ticketsQuery === undefined;
+  const tickets = ticketsQuery ?? [];
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -54,8 +56,7 @@ export function TicketList() {
     setDebouncedSearchTerm("");
   }, []);
 
-  // Loading state
-  const isLoading = tickets.length === 0;
+  // Loading derived from useQuery undefined (see above)
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50">
@@ -92,7 +93,13 @@ export function TicketList() {
           </p>
         </div>
 
-        {tickets.length === 0 ? (
+        {isLoading ? (
+          <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-8 text-center">
+            <p className="text-sm font-medium text-gray-600">
+              Loading tickets…
+            </p>
+          </div>
+        ) : tickets.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-8 text-center">
             <p className="text-sm font-medium text-gray-600">No tickets yet</p>
             <p className="mt-1 text-xs text-gray-500">

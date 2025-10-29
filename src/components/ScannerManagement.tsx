@@ -10,7 +10,9 @@ export default function ScannerManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  const scanners = useQuery(api.scanners.getAllScanners) || [];
+  const scannersQuery = useQuery(api.scanners.getAllScanners);
+  const isLoading = scannersQuery === undefined;
+  const scanners = scannersQuery ?? [];
   const createScanner = useMutation(api.scanners.createScanner);
   const deactivateScanner = useMutation(api.scanners.deactivateScanner);
   const activateScanner = useMutation(api.scanners.activateScanner);
@@ -44,7 +46,10 @@ export default function ScannerManagement() {
     }
   };
 
-  const handleToggleActive = async (scannerId: Id<"scanners">, isActive: boolean) => {
+  const handleToggleActive = async (
+    scannerId: Id<"scanners">,
+    isActive: boolean,
+  ) => {
     try {
       if (isActive) {
         await deactivateScanner({ scannerId });
@@ -96,7 +101,9 @@ export default function ScannerManagement() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Scanners</h2>
-            <p className="text-sm text-gray-500">Manage volunteer access for the scanning app.</p>
+            <p className="text-sm text-gray-500">
+              Manage volunteer access for the scanning app.
+            </p>
           </div>
           <button
             onClick={() => setShowCreateForm((prev) => !prev)}
@@ -110,7 +117,8 @@ export default function ScannerManagement() {
           <div className="bg-white border rounded-lg p-6 mb-8">
             <h3 className="text-lg font-medium text-gray-900">New scanner</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Share the generated credentials with the volunteer responsible for scanning.
+              Share the generated credentials with the volunteer responsible for
+              scanning.
             </p>
             <form onSubmit={handleCreateScanner} className="space-y-4">
               <div>
@@ -157,10 +165,16 @@ export default function ScannerManagement() {
             <h3 className="text-lg font-medium text-gray-900">
               Active scanners ({scanners.filter((s) => s.isActive).length})
             </h3>
-            <span className="text-xs text-gray-500">Total: {scanners.length}</span>
+            <span className="text-xs text-gray-500">
+              Total: {scanners.length}
+            </span>
           </div>
 
-          {scanners.length === 0 ? (
+          {isLoading ? (
+            <div className="px-6 py-12 text-center text-gray-500">
+              Loading scanners…
+            </div>
+          ) : scanners.length === 0 ? (
             <div className="px-6 py-12 text-center text-gray-500">
               No scanners created yet.
             </div>
@@ -214,8 +228,18 @@ export default function ScannerManagement() {
                       <td className="px-6 py-4 text-gray-600">
                         {scanner.lastLoginAt ? (
                           <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
                             </svg>
                             {formatDate(scanner.lastLoginAt)}
                           </div>
@@ -233,25 +257,58 @@ export default function ScannerManagement() {
                             title={scanner.isActive ? "Deactivate" : "Activate"}
                           >
                             {scanner.isActive ? (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                                />
                               </svg>
                             ) : (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
                               </svg>
                             )}
                           </button>
 
                           <button
                             onClick={() =>
-                              handleDeleteScanner(scanner._id, scanner.scannerName)
+                              handleDeleteScanner(
+                                scanner._id,
+                                scanner.scannerName,
+                              )
                             }
                             className="text-red-600 hover:text-red-800"
                             title="Delete scanner"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
                             </svg>
                           </button>
                         </div>

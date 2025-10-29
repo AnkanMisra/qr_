@@ -39,7 +39,7 @@ export function QrScanner() {
   const scanTicket = useMutation(api.tickets.scanTicket);
 
   // Reset last processed QR after a delay to allow re-scanning the same code
-  const resetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetLastProcessedQR = useCallback(() => {
     setLastProcessedQR("");
@@ -51,6 +51,7 @@ export function QrScanner() {
       // Clean up any pending reset timeout
       if (resetTimeoutRef.current) {
         clearTimeout(resetTimeoutRef.current);
+        resetTimeoutRef.current = null;
       }
     };
   }, []);
@@ -115,6 +116,10 @@ export function QrScanner() {
       } finally {
         setIsProcessing(false);
         isProcessingRef.current = false;
+        // Clear any existing timeout before setting a new one
+        if (resetTimeoutRef.current) {
+          clearTimeout(resetTimeoutRef.current);
+        }
         // Allow re-scanning the same QR code after 5 seconds
         resetTimeoutRef.current = setTimeout(resetLastProcessedQR, 5000);
       }
@@ -419,7 +424,7 @@ export function QrScanner() {
 
           return (
             <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-3 sm:p-4 pt-safe-top pb-safe-bottom">
-              <div className="bg-white rounded-xl max-w-sm w-full mx-2 sm:mx-4 my-4 sm:my-8 overflow-hidden shadow-2xl max-h-[75vh] sm:max-h-[90vh] overflow-y-auto">
+              <div className="bg-white rounded-xl max-w-sm w-full mx-2 sm:mx-4 my-4 sm:my-8 shadow-2xl max-h-[75vh] sm:max-h-[90vh] overflow-y-auto">
                 {/* Modal Header */}
                 <div
                   className={`px-3 py-1 text-center ${

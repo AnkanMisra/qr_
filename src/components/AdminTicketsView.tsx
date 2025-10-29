@@ -17,7 +17,9 @@ type Ticket = {
 };
 
 export function AdminTicketsView() {
-  const tickets = useQuery(api.tickets.getAllTickets) || [];
+  const ticketsQuery = useQuery(api.tickets.getAllTickets);
+  const isLoading = ticketsQuery === undefined;
+  const tickets = ticketsQuery ?? [];
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<
@@ -53,6 +55,7 @@ export function AdminTicketsView() {
 
   // Memoized filtering and sorting to prevent unnecessary recalculations
   const processedTickets = useMemo(() => {
+    if (!tickets) return [];
     let filtered = tickets.filter((ticket) => {
       const matchesSearch =
         ticket.teamName
@@ -90,6 +93,14 @@ export function AdminTicketsView() {
 
   // Memoized stats calculation
   const stats = useMemo(() => {
+    if (!tickets) {
+      return {
+        totalTickets: 0,
+        checkedInTickets: 0,
+        pendingTickets: 0,
+        totalScans: 0,
+      };
+    }
     const totalTickets = tickets.length;
     const checkedInTickets = tickets.filter((t) => t.isCheckedIn).length;
     const pendingTickets = totalTickets - checkedInTickets;
@@ -126,9 +137,6 @@ export function AdminTicketsView() {
     setSearchTerm("");
     setDebouncedSearchTerm("");
   }, []);
-
-  // Loading state
-  const isLoading = tickets.length === 0;
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
@@ -237,7 +245,14 @@ export function AdminTicketsView() {
       {/* Tickets Table */}
       <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto">
-          {processedTickets.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+              </div>
+              <p className="text-gray-500 text-lg">Loading tickets...</p>
+            </div>
+          ) : processedTickets.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                 <svg
@@ -255,7 +270,7 @@ export function AdminTicketsView() {
                 </svg>
               </div>
               <p className="text-gray-500 text-lg">
-                {tickets.length === 0
+                {!tickets || tickets.length === 0
                   ? "No tickets created yet"
                   : "No tickets match your filters"}
               </p>
