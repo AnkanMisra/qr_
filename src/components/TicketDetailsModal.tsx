@@ -18,6 +18,8 @@ interface Ticket {
   teamName: string;
   leaderName: string;
   teamMemberCount: number;
+  roomNumber?: string;
+  slotNumber?: string;
   uniqueId: string;
   isCheckedIn: boolean;
   checkinCounter?: number;
@@ -60,7 +62,8 @@ export function TicketDetailsModal({
     if (!qrCodeDataUrl || !ticket) return;
 
     const link = document.createElement("a");
-    link.download = `${ticket.teamName.replace(/\s+/g, "_")}_QR.png`;
+    // Replace spaces with hyphens and convert to lowercase
+    link.download = `${ticket.teamName.trim().replace(/\s+/g, "-").toLowerCase()}.png`;
     link.href = qrCodeDataUrl;
     document.body.appendChild(link);
     link.click();
@@ -98,9 +101,23 @@ export function TicketDetailsModal({
                   </p>
                   <p className="text-sm text-gray-600 flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    <span className="font-medium">Member:</span>{" "}
+                    <span className="font-medium">Team Size:</span>{" "}
                     {ticket.teamMemberCount}
                   </p>
+                  {(ticket.roomNumber || ticket.slotNumber) && (
+                    <div className="flex gap-4 mt-1">
+                      {ticket.roomNumber && (
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Room:</span> {ticket.roomNumber}
+                        </p>
+                      )}
+                      {ticket.slotNumber && (
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Slot:</span> {ticket.slotNumber}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <button
@@ -222,6 +239,18 @@ export function TicketDetailsModal({
                       </div>
                     )}
                   </div>
+
+                  {ticket.scannedBy && (
+                    <div className="bg-gray-50 rounded-xl p-4 text-center md:col-span-2">
+                      <div className="flex items-center justify-center gap-2 text-gray-500 text-sm mb-2">
+                        <User className="w-4 h-4" />
+                        Scanned By
+                      </div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {ticket.scannedBy}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">

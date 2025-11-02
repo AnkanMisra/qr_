@@ -1,12 +1,34 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { v4 as uuidv4 } from "uuid";
 
-// Generate a secure unique ID for tickets
+// Generate a secure unique ID for tickets using UUID v4
 function generateUniqueId(): string {
-  return (
-    Math.random().toString(36).substring(2, 15) +
-    Math.random().toString(36).substring(2, 15)
-  );
+  return uuidv4();
+}
+
+// Helper function to validate admin session
+async function validateAdminSession(ctx: any, sessionToken: string | undefined): Promise<boolean> {
+  if (!sessionToken) {
+    return false;
+  }
+
+  const session = await ctx.db
+    .query("adminSessions")
+    .withIndex("by_session_token", (q: any) => q.eq("sessionToken", sessionToken))
+    .filter((q: any) => q.eq(q.field("isActive"), true))
+    .first();
+
+  if (!session) {
+    return false;
+  }
+
+  // Check if session has expired
+  if (session.expiresAt < Date.now()) {
+    return false;
+  }
+
+  return true;
 }
 
 export const createTicket = mutation({
@@ -14,12 +36,21 @@ export const createTicket = mutation({
     teamName: v.string(),
     leaderName: v.string(),
     teamMemberCount: v.number(),
+    roomNumber: v.string(),
+    slotNumber: v.string(),
+    sessionToken: v.optional(v.string()), 
   },
   returns: v.object({
     ticketId: v.id("tickets"),
     uniqueId: v.string(),
   }),
   handler: async (ctx, args) => {
+    // SECURITY: Validate admin session before creating ticket
+    const isAuthenticated = await validateAdminSession(ctx, args.sessionToken);
+    
+    if (!isAuthenticated) {
+      throw new Error("Unauthorized: Valid admin session required to create tickets");
+    }
     if (
       !Number.isInteger(args.teamMemberCount) ||
       args.teamMemberCount < 2 ||
@@ -28,12 +59,35 @@ export const createTicket = mutation({
       throw new Error("Team member count must be between 2 and 4");
     }
 
+    // Validate roomNumber and slotNumber are not empty
+    if (!args.roomNumber || !args.roomNumber.trim()) {
+      throw new Error("Room number is required");
+    }
+
+    if (!args.slotNumber || !args.slotNumber.trim()) {
+      throw new Error("Slot number is required");
+    }
+
+    // Validate room number against allowed values
+    const validRooms = ['D31', 'D32', 'D33', 'D34'];
+    if (!validRooms.includes(args.roomNumber.trim())) {
+      throw new Error("Invalid room number. Must be D31, D32, D33, or D34");
+    }
+
+    // Validate slot number against allowed values
+    const validSlots = ['1', '2'];
+    if (!validSlots.includes(args.slotNumber.trim())) {
+      throw new Error("Invalid slot number. Must be 1 or 2");
+    }
+
     const uniqueId = generateUniqueId();
 
     const ticketId = await ctx.db.insert("tickets", {
       teamName: args.teamName,
       leaderName: args.leaderName,
       teamMemberCount: args.teamMemberCount,
+      roomNumber: args.roomNumber.trim(),
+      slotNumber: args.slotNumber.trim(),
       uniqueId,
       isCheckedIn: false,
       checkinCounter: 0,
@@ -54,8 +108,8 @@ export const getAllTickets = query({
 export const scanTicket = mutation({
   args: {
     uniqueId: v.string(),
-    timestamp: v.optional(v.number()), // Add timestamp to prevent duplicate rapid calls
-    scannedBy: v.optional(v.string()), // Scanner name who performed the scan
+    timestamp: v.optional(v.number()), 
+    scannedBy: v.optional(v.string()), 
   },
   handler: async (ctx, args) => {
     const ticket = await ctx.db
@@ -87,6 +141,8 @@ export const scanTicket = mutation({
           teamName: ticket.teamName,
           leaderName: ticket.leaderName,
           teamMemberCount: ticket.teamMemberCount,
+          roomNumber: ticket.roomNumber,
+          slotNumber: ticket.slotNumber,
           checkedInAt: ticket.checkedInAt || undefined,
           checkinCounter: ticket.checkinCounter || 0,
           scannedBy: existingScannedBy,
@@ -120,6 +176,8 @@ export const scanTicket = mutation({
             teamName: ticket.teamName,
             leaderName: ticket.leaderName,
             teamMemberCount: ticket.teamMemberCount,
+            roomNumber: ticket.roomNumber,
+            slotNumber: ticket.slotNumber,
             checkedInAt: ticket.checkedInAt || now,
             checkinCounter: ticket.checkinCounter,
             scannedBy: scannerForResponse,
@@ -138,6 +196,8 @@ export const scanTicket = mutation({
           teamName: ticket.teamName,
           leaderName: ticket.leaderName,
           teamMemberCount: ticket.teamMemberCount,
+          roomNumber: ticket.roomNumber,
+          slotNumber: ticket.slotNumber,
           checkedInAt: ticket.checkedInAt,
           checkinCounter: ticket.checkinCounter,
           scannedBy: scannerForResponse,
@@ -145,24 +205,23 @@ export const scanTicket = mutation({
       };
     }
 
-    // Always increment the counter for every legitimate scan
+
     const currentCounter = ticket.checkinCounter || 0;
     const newCounter = currentCounter + 1;
 
     const finalScannedBy = scannerForResponse;
 
-    // Update the counter and timestamp for every scan
+
     const scanTime = Date.now();
     await ctx.db.patch(ticket._id, {
       isCheckedIn: true,
-      checkedInAt: ticket.checkedInAt || scanTime, // Keep original check-in time for first scan
+      checkedInAt: ticket.checkedInAt || scanTime, 
       checkinCounter: newCounter,
-      lastScanTime: scanTime, // Always update last scan time
+      lastScanTime: scanTime, 
       scannedBy: finalScannedBy,
     });
 
     if (currentCounter === 0) {
-      // First scan - success
       return {
         status: "success",
         message: "Ticket successfully scanned - First check-in!",
@@ -170,6 +229,8 @@ export const scanTicket = mutation({
           teamName: ticket.teamName,
           leaderName: ticket.leaderName,
           teamMemberCount: ticket.teamMemberCount,
+          roomNumber: ticket.roomNumber,
+          slotNumber: ticket.slotNumber,
           checkedInAt: scanTime,
           checkinCounter: newCounter,
           scannedBy: finalScannedBy,
@@ -187,6 +248,8 @@ export const scanTicket = mutation({
           teamName: ticket.teamName,
           leaderName: ticket.leaderName,
           teamMemberCount: ticket.teamMemberCount,
+          roomNumber: ticket.roomNumber,
+          slotNumber: ticket.slotNumber,
           checkedInAt: ticket.checkedInAt,
           checkinCounter: newCounter,
           scannedBy: finalScannedBy,

@@ -9,6 +9,8 @@ type Ticket = {
   teamName: string;
   leaderName: string;
   teamMemberCount: number;
+  roomNumber?: string;
+  slotNumber?: string;
   uniqueId: string;
   isCheckedIn: boolean;
   checkinCounter?: number;
@@ -25,8 +27,9 @@ export function AdminTicketsView() {
   const [filterStatus, setFilterStatus] = useState<
     "all" | "checked" | "pending"
   >("all");
-  const [sortBy, setSortBy] = useState<"recent" | "name" | "checkins">(
-    "recent",
+  const [filterScanner, setFilterScanner] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"name" | "checkins">(
+    "name",
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -53,6 +56,15 @@ export function AdminTicketsView() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Get unique scanners for filter dropdown
+  const uniqueScanners = useMemo(() => {
+    if (!tickets) return [];
+    const scanners = tickets
+      .filter((t) => t.scannedBy)
+      .map((t) => t.scannedBy as string);
+    return Array.from(new Set(scanners)).sort();
+  }, [tickets]);
+
   // Memoized filtering and sorting to prevent unnecessary recalculations
   const processedTickets = useMemo(() => {
     if (!tickets) return [];
@@ -73,14 +85,16 @@ export function AdminTicketsView() {
         (filterStatus === "checked" && ticket.isCheckedIn) ||
         (filterStatus === "pending" && !ticket.isCheckedIn);
 
-      return matchesSearch && matchesStatus;
+      const matchesScanner =
+        filterScanner === "all" ||
+        ticket.scannedBy === filterScanner;
+
+      return matchesSearch && matchesStatus && matchesScanner;
     });
 
     // Sort tickets
     return filtered.sort((a, b) => {
       switch (sortBy) {
-        case "recent":
-          return b._creationTime - a._creationTime;
         case "name":
           return a.teamName.localeCompare(b.teamName);
         case "checkins":
@@ -89,7 +103,7 @@ export function AdminTicketsView() {
           return 0;
       }
     });
-  }, [tickets, debouncedSearchTerm, filterStatus, sortBy]);
+  }, [tickets, debouncedSearchTerm, filterStatus, filterScanner, sortBy]);
 
   // Memoized stats calculation
   const stats = useMemo(() => {
@@ -128,7 +142,14 @@ export function AdminTicketsView() {
 
   const handleSortChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      setSortBy(e.target.value as "recent" | "name" | "checkins");
+      setSortBy(e.target.value as "name" | "checkins");
+    },
+    [],
+  );
+
+  const handleScannerFilterChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      setFilterScanner(e.target.value);
     },
     [],
   );
@@ -221,11 +242,23 @@ export function AdminTicketsView() {
               </select>
 
               <select
+                value={filterScanner}
+                onChange={handleScannerFilterChange}
+                className="w-full lg:w-auto px-4 py-2.5 border border-gray-200 rounded-2xl bg-white text-sm focus:outline-none focus:ring-0"
+              >
+                <option value="all">All Scanners</option>
+                {uniqueScanners.map((scanner) => (
+                  <option key={scanner} value={scanner}>
+                    {scanner}
+                  </option>
+                ))}
+              </select>
+
+              <select
                 value={sortBy}
                 onChange={handleSortChange}
                 className="w-full lg:w-auto px-4 py-2.5 border border-gray-200 rounded-2xl bg-white text-sm focus:outline-none focus:ring-0"
               >
-                <option value="recent">Most Recent</option>
                 <option value="name">Team Name</option>
                 <option value="checkins">Most Scans</option>
               </select>

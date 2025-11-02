@@ -9,12 +9,16 @@ interface CreatedTicket {
   teamName: string;
   leaderName: string;
   teamMemberCount: number;
+  roomNumber: string;
+  slotNumber: string;
 }
 
 export function CreateTicket() {
   const [teamName, setTeamName] = useState("");
   const [leaderName, setLeaderName] = useState("");
   const [teamMemberCount, setTeamMemberCount] = useState("");
+  const [roomNumber, setRoomNumber] = useState("");
+  const [slotNumber, setSlotNumber] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [lastCreatedTicket, setLastCreatedTicket] = useState<CreatedTicket | null>(
     null,
@@ -44,14 +48,10 @@ export function CreateTicket() {
     }
 
     const link = document.createElement("a");
-    const safeTeamName = ticket.teamName.trim().replace(/\s+/g, "-").toLowerCase();
-    const safeLeaderName = ticket.leaderName
-      .trim()
-      .replace(/\s+/g, "-")
-      .toLowerCase();
-    const fileName = `${safeTeamName || "team"}-${safeLeaderName || "leader"}`;
+    // Replace spaces with hyphens and convert to lowercase
+    const fileName = ticket.teamName.trim().replace(/\s+/g, "-").toLowerCase();
     link.href = qrCodeDataUrl;
-    link.download = `${fileName}.png`;
+    link.download = `${fileName || "team"}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -62,9 +62,11 @@ export function CreateTicket() {
 
     const trimmedTeam = teamName.trim();
     const trimmedLeader = leaderName.trim();
+    const trimmedRoom = roomNumber.trim();
+    const trimmedSlot = slotNumber.trim();
     const parsedCount = Number(teamMemberCount);
 
-    if (!trimmedTeam || !trimmedLeader || Number.isNaN(parsedCount)) {
+    if (!trimmedTeam || !trimmedLeader || !trimmedRoom || !trimmedSlot || Number.isNaN(parsedCount)) {
       toast.error("Please fill in all fields with valid details");
       return;
     }
@@ -82,10 +84,22 @@ export function CreateTicket() {
     setQrCodeDataUrl(null);
 
     try {
+      // Get admin session token from localStorage
+      const sessionToken = localStorage.getItem("admin_session_token");
+      
+      if (!sessionToken) {
+        toast.error("Admin session expired. Please log in again.");
+        setIsCreating(false);
+        return;
+      }
+
       const result = await createTicket({
         teamName: trimmedTeam,
         leaderName: trimmedLeader,
         teamMemberCount: parsedCount,
+        roomNumber: trimmedRoom,
+        slotNumber: trimmedSlot,
+        sessionToken,
       });
 
       setLastCreatedTicket({
@@ -93,6 +107,8 @@ export function CreateTicket() {
         teamName: trimmedTeam,
         leaderName: trimmedLeader,
         teamMemberCount: parsedCount,
+        roomNumber: trimmedRoom,
+        slotNumber: trimmedSlot,
       });
 
       await generateQRCode(result.uniqueId);
@@ -101,8 +117,18 @@ export function CreateTicket() {
       setTeamName("");
       setLeaderName("");
       setTeamMemberCount("");
-    } catch (_error) {
-      toast.error("Failed to create ticket");
+      setRoomNumber("");
+      setSlotNumber("");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to create ticket";
+      
+      if (errorMessage.includes("Unauthorized")) {
+        toast.error("Session expired. Please log in again.");
+        // Clear expired session
+        localStorage.removeItem("admin_session_token");
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsCreating(false);
     }
@@ -164,7 +190,7 @@ export function CreateTicket() {
               htmlFor="teamMemberCount"
               className="block text-sm font-medium text-gray-700 text-center"
             >
-              Number of team members
+              Team Size (Number of members)
             </label>
             <input
               id="teamMemberCount"
@@ -182,6 +208,46 @@ export function CreateTicket() {
             />
           </div>
 
+          <div className="space-y-2">
+            <label
+              htmlFor="roomNumber"
+              className="block text-sm font-medium text-gray-700 text-center"
+            >
+              Room Number
+            </label>
+            <input
+              id="roomNumber"
+              name="roomNumber"
+              type="text"
+              autoComplete="off"
+              required
+              value={roomNumber}
+              onChange={(event) => setRoomNumber(event.target.value)}
+              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 text-center placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-0"
+              placeholder="101"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label
+              htmlFor="slotNumber"
+              className="block text-sm font-medium text-gray-700 text-center"
+            >
+              Slot Number
+            </label>
+            <input
+              id="slotNumber"
+              name="slotNumber"
+              type="text"
+              autoComplete="off"
+              required
+              value={slotNumber}
+              onChange={(event) => setSlotNumber(event.target.value)}
+              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 text-center placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-0"
+              placeholder="A1"
+            />
+          </div>
+
           <button
             type="submit"
             disabled={
@@ -189,6 +255,8 @@ export function CreateTicket() {
               !teamName.trim() ||
               !leaderName.trim() ||
               !teamMemberCount.trim() ||
+              !roomNumber.trim() ||
+              !slotNumber.trim() ||
               Number(teamMemberCount) < 2 ||
               Number(teamMemberCount) > 4
             }
@@ -208,7 +276,7 @@ export function CreateTicket() {
             </p>
           </div>
 
-          <div className="mt-6 grid gap-4 text-sm text-gray-700 sm:grid-cols-3">
+          <div className="mt-6 grid gap-4 text-sm text-gray-700 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-xl border border-gray-100 px-4 py-3">
               <p className="font-medium text-gray-500">Team</p>
               <p className="mt-1 font-semibold text-gray-900">
@@ -222,9 +290,21 @@ export function CreateTicket() {
               </p>
             </div>
             <div className="rounded-xl border border-gray-100 px-4 py-3">
-              <p className="font-medium text-gray-500">Members</p>
+              <p className="font-medium text-gray-500">Team Size</p>
               <p className="mt-1 font-semibold text-gray-900">
                 {lastCreatedTicket.teamMemberCount}
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-100 px-4 py-3">
+              <p className="font-medium text-gray-500">Room Number</p>
+              <p className="mt-1 font-semibold text-gray-900">
+                {lastCreatedTicket.roomNumber}
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-100 px-4 py-3">
+              <p className="font-medium text-gray-500">Slot Number</p>
+              <p className="mt-1 font-semibold text-gray-900">
+                {lastCreatedTicket.slotNumber}
               </p>
             </div>
           </div>

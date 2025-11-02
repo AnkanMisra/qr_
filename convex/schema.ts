@@ -6,18 +6,15 @@ const applicationTables = {
     teamName: v.string(),
     leaderName: v.string(),
     teamMemberCount: v.number(),
+    roomNumber: v.optional(v.string()), // Optional for backward compatibility with existing tickets
+    slotNumber: v.optional(v.string()), // Optional for backward compatibility with existing tickets
     uniqueId: v.string(),
     isCheckedIn: v.boolean(),
     checkedInAt: v.optional(v.number()),
     checkinCounter: v.optional(v.number()),
     lastScanTime: v.optional(v.number()),
     scannedBy: v.optional(v.string()),
-  })
-    .index("by_unique_id", ["uniqueId"])
-    .index("by_status", ["isCheckedIn"])
-
-    .index("by_checkin_counter", ["checkinCounter"])
-    .index("by_scanned_by", ["scannedBy"]),
+  }).index("by_unique_id", ["uniqueId"]),
 
   adminSessions: defineTable({
     sessionToken: v.string(),
@@ -27,9 +24,9 @@ const applicationTables = {
   }).index("by_session_token", ["sessionToken"]),
 
   scanners: defineTable({
-    scannerName: v.optional(v.string()),
+    scannerName: v.optional(v.string()), 
     scannerPassword: v.optional(v.string()),
-    name: v.optional(v.string()),
+    name: v.optional(v.string()), 
     password: v.optional(v.string()), // Old field name for migration
     isActive: v.boolean(),
     createdAt: v.number(),

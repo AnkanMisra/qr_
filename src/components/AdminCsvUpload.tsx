@@ -11,6 +11,8 @@ interface ParsedRow {
   teamName: string;
   leaderName: string;
   teamMemberCount: number;
+  roomNumber: string;
+  slotNumber: string;
   lineNumber: number;
 }
 
@@ -53,8 +55,10 @@ export function AdminCsvUpload() {
 
           const teamName = (record.TeamName || "").trim();
           const leaderName = (record.TeamLeadName || "").trim();
-          const memberValue = record.NumberofMember || "";
+          const memberValue = record.TeamSize || record.NumberofMember || "";
           const memberCount = Number(memberValue);
+          const roomNumber = (record.RoomNumber || "").trim();
+          const slotNumber = (record.SlotNumber || "").trim();
 
           if (!teamName || !leaderName) {
             errors.push(`Row ${index + 2}: Missing team or leader name`);
@@ -62,7 +66,17 @@ export function AdminCsvUpload() {
           }
 
           if (!Number.isInteger(memberCount) || memberCount < 2 || memberCount > 4) {
-            errors.push(`Row ${index + 2}: Number of members must be between 2 and 4`);
+            errors.push(`Row ${index + 2}: Team size must be between 2 and 4`);
+            return;
+          }
+
+          if (!roomNumber) {
+            errors.push(`Row ${index + 2}: Missing room number`);
+            return;
+          }
+
+          if (!slotNumber) {
+            errors.push(`Row ${index + 2}: Missing slot number`);
             return;
           }
 
@@ -70,6 +84,8 @@ export function AdminCsvUpload() {
             teamName,
             leaderName,
             teamMemberCount: memberCount,
+            roomNumber,
+            slotNumber,
             lineNumber: index + 2,
           });
         });
@@ -121,15 +137,23 @@ export function AdminCsvUpload() {
     [parseCsv],
   );
 
-  const safeFileName = useCallback((teamName: string, leaderName: string) => {
+  const safeFileName = useCallback((teamName: string) => {
+    // Replace spaces with hyphens and convert to lowercase
     const safeTeam = teamName.trim().replace(/\s+/g, "-").toLowerCase();
-    const safeLeader = leaderName.trim().replace(/\s+/g, "-").toLowerCase();
-    return `${safeTeam || "team"}-${safeLeader || "leader"}.png`;
+    return `${safeTeam || "team"}.png`;
   }, []);
 
   const processCsvRows = useCallback(async () => {
     if (parsedRows.length === 0) {
       toast.error("Upload and validate a CSV before processing");
+      return;
+    }
+
+    // Get admin session token
+    const sessionToken = localStorage.getItem("admin_session_token");
+    
+    if (!sessionToken) {
+      toast.error("Admin session expired. Please log in again.");
       return;
     }
 
@@ -145,6 +169,9 @@ export function AdminCsvUpload() {
           teamName: row.teamName,
           leaderName: row.leaderName,
           teamMemberCount: row.teamMemberCount,
+          roomNumber: row.roomNumber,
+          slotNumber: row.slotNumber,
+          sessionToken,
         });
 
         const qrDataUrl = await QRCode.toDataURL(result.uniqueId, {
@@ -156,6 +183,15 @@ export function AdminCsvUpload() {
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error creating ticket";
+        
+        // Check for authentication errors
+        if (message.includes("Unauthorized")) {
+          toast.error("Session expired. Please log in again.");
+          localStorage.removeItem("admin_session_token");
+          setIsProcessing(false);
+          return; // Stop processing on auth error
+        }
+        
         errors.push(`Row ${row.lineNumber}: ${message}`);
       }
     }
@@ -191,7 +227,7 @@ export function AdminCsvUpload() {
 
     processedTickets.forEach((ticket) => {
       const base64 = ticket.qrDataUrl.split(",")[1] ?? "";
-      folder.file(safeFileName(ticket.teamName, ticket.leaderName), base64, {
+      folder.file(safeFileName(ticket.teamName), base64, {
         base64: true,
       });
     });
@@ -225,7 +261,7 @@ export function AdminCsvUpload() {
             Bulk ticket creation via CSV
           </h2>
           <p className="text-sm text-gray-500">
-            Upload a CSV with columns TeamName, TeamLeadName, NumberofMember (2-4).
+            Upload a CSV with columns: TeamName, TeamLeadName, TeamSize (2-4), RoomNumber, SlotNumber
           </p>
         </div>
 
@@ -319,7 +355,7 @@ export function AdminCsvUpload() {
                   {ticket.teamName} • {ticket.leaderName}
                 </p>
                 <p className="text-xs text-emerald-700">
-                  Members: {ticket.teamMemberCount} • QR ready
+                  Team Size: {ticket.teamMemberCount} • Room: {ticket.roomNumber} • Slot: {ticket.slotNumber} • QR ready
                 </p>
               </div>
             ))}
