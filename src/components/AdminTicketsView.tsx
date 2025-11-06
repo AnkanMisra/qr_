@@ -28,6 +28,7 @@ export function AdminTicketsView() {
     "all" | "checked" | "pending"
   >("all");
   const [filterScanner, setFilterScanner] = useState<string>("all");
+  const [filterRoom, setFilterRoom] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"name" | "checkins">(
     "name",
   );
@@ -65,6 +66,15 @@ export function AdminTicketsView() {
     return Array.from(new Set(scanners)).sort();
   }, [tickets]);
 
+  // Get unique room numbers for filter dropdown
+  const uniqueRooms = useMemo(() => {
+    if (!tickets) return [];
+    const rooms = tickets
+      .filter((t) => t.roomNumber)
+      .map((t) => t.roomNumber as string);
+    return Array.from(new Set(rooms)).sort();
+  }, [tickets]);
+
   // Memoized filtering and sorting to prevent unnecessary recalculations
   const processedTickets = useMemo(() => {
     if (!tickets) return [];
@@ -89,7 +99,11 @@ export function AdminTicketsView() {
         filterScanner === "all" ||
         ticket.scannedBy === filterScanner;
 
-      return matchesSearch && matchesStatus && matchesScanner;
+      const matchesRoom =
+        filterRoom === "all" ||
+        ticket.roomNumber === filterRoom;
+
+      return matchesSearch && matchesStatus && matchesScanner && matchesRoom;
     });
 
     // Sort tickets
@@ -103,7 +117,7 @@ export function AdminTicketsView() {
           return 0;
       }
     });
-  }, [tickets, debouncedSearchTerm, filterStatus, filterScanner, sortBy]);
+  }, [tickets, debouncedSearchTerm, filterStatus, filterScanner, filterRoom, sortBy]);
 
   // Memoized stats calculation
   const stats = useMemo(() => {
@@ -150,6 +164,13 @@ export function AdminTicketsView() {
   const handleScannerFilterChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       setFilterScanner(e.target.value);
+    },
+    [],
+  );
+
+  const handleRoomFilterChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      setFilterRoom(e.target.value);
     },
     [],
   );
@@ -250,6 +271,19 @@ export function AdminTicketsView() {
                 {uniqueScanners.map((scanner) => (
                   <option key={scanner} value={scanner}>
                     {scanner}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filterRoom}
+                onChange={handleRoomFilterChange}
+                className="w-full lg:w-auto px-4 py-2.5 border border-gray-200 rounded-2xl bg-white text-sm focus:outline-none focus:ring-0"
+              >
+                <option value="all">All Rooms</option>
+                {uniqueRooms.map((room) => (
+                  <option key={room} value={room}>
+                    {room}
                   </option>
                 ))}
               </select>

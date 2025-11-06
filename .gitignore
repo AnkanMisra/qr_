@@ -28,3 +28,4 @@ dist-ssr
 package-lock.json
 sample_tickets.csv
 team_details.csv
+team_details_qr.csv
