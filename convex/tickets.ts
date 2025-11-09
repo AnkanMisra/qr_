@@ -259,9 +259,20 @@ export const scanTicket = mutation({
   },
 });
 
+// ADMIN-ONLY: Migration function to add counter field to existing tickets
+// This mutation requires valid admin session authentication
 export const migrateTicketsWithCounter = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    sessionToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // SECURITY: Validate admin session before allowing migration
+    const isAuthenticated = await validateAdminSession(ctx, args.sessionToken);
+    
+    if (!isAuthenticated) {
+      throw new Error("Unauthorized: Valid admin session required to run migration");
+    }
+
     const tickets = await ctx.db.query("tickets").collect();
     let updated = 0;
 
@@ -280,9 +291,20 @@ export const migrateTicketsWithCounter = mutation({
   },
 });
 
+// ADMIN-ONLY: Migration function to reset all ticket counters
+// This mutation requires valid admin session authentication
 export const resetAllCounters = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    sessionToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // SECURITY: Validate admin session before allowing migration
+    const isAuthenticated = await validateAdminSession(ctx, args.sessionToken);
+    
+    if (!isAuthenticated) {
+      throw new Error("Unauthorized: Valid admin session required to run migration");
+    }
+
     const tickets = await ctx.db.query("tickets").collect();
     let updated = 0;
 
@@ -296,5 +318,48 @@ export const resetAllCounters = mutation({
     }
 
     return { message: `Reset ${updated} tickets to correct counter values` };
+  },
+});
+
+// ADMIN-ONLY: Migration function to remove legacy qrCodeStorageId field
+// This mutation requires valid admin session authentication
+export const removeQrCodeStorageId = mutation({
+  args: {
+    sessionToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // SECURITY: Validate admin session before allowing migration
+    const isAuthenticated = await validateAdminSession(ctx, args.sessionToken);
+    
+    if (!isAuthenticated) {
+      throw new Error("Unauthorized: Valid admin session required to run migration");
+    }
+
+    const tickets = await ctx.db.query("tickets").collect();
+    let updated = 0;
+
+    for (const ticket of tickets) {
+      // @ts-expect-error - accessing field that may not be in schema
+      if (ticket.qrCodeStorageId !== undefined) {
+        // Use replace to remove the field entirely
+        const { qrCodeStorageId, ...cleanTicket } = ticket as any;
+        await ctx.db.replace(ticket._id, {
+          teamName: ticket.teamName,
+          leaderName: ticket.leaderName,
+          teamMemberCount: ticket.teamMemberCount,
+          roomNumber: ticket.roomNumber,
+          slotNumber: ticket.slotNumber,
+          uniqueId: ticket.uniqueId,
+          isCheckedIn: ticket.isCheckedIn,
+          ...(ticket.checkedInAt !== undefined && { checkedInAt: ticket.checkedInAt }),
+          ...(ticket.checkinCounter !== undefined && { checkinCounter: ticket.checkinCounter }),
+          ...(ticket.lastScanTime !== undefined && { lastScanTime: ticket.lastScanTime }),
+          ...(ticket.scannedBy !== undefined && { scannedBy: ticket.scannedBy }),
+        });
+        updated++;
+      }
+    }
+
+    return { message: `Removed qrCodeStorageId from ${updated} tickets` };
   },
 });
