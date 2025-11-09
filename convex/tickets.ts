@@ -298,3 +298,35 @@ export const resetAllCounters = mutation({
     return { message: `Reset ${updated} tickets to correct counter values` };
   },
 });
+
+export const removeQrCodeStorageId = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const tickets = await ctx.db.query("tickets").collect();
+    let updated = 0;
+
+    for (const ticket of tickets) {
+      // @ts-ignore - accessing field that may not be in schema
+      if (ticket.qrCodeStorageId !== undefined) {
+        // Use replace to remove the field entirely
+        const { qrCodeStorageId, ...cleanTicket } = ticket as any;
+        await ctx.db.replace(ticket._id, {
+          teamName: ticket.teamName,
+          leaderName: ticket.leaderName,
+          teamMemberCount: ticket.teamMemberCount,
+          roomNumber: ticket.roomNumber,
+          slotNumber: ticket.slotNumber,
+          uniqueId: ticket.uniqueId,
+          isCheckedIn: ticket.isCheckedIn,
+          ...(ticket.checkedInAt !== undefined && { checkedInAt: ticket.checkedInAt }),
+          ...(ticket.checkinCounter !== undefined && { checkinCounter: ticket.checkinCounter }),
+          ...(ticket.lastScanTime !== undefined && { lastScanTime: ticket.lastScanTime }),
+          ...(ticket.scannedBy !== undefined && { scannedBy: ticket.scannedBy }),
+        });
+        updated++;
+      }
+    }
+
+    return { message: `Removed qrCodeStorageId from ${updated} tickets` };
+  },
+});

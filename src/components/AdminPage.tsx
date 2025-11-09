@@ -3,6 +3,7 @@ import { CreateTicket } from "./CreateTicket";
 import { AdminTicketsView } from "./AdminTicketsView";
 import ScannerManagement from "./ScannerManagement";
 import { AdminCsvUpload } from "./AdminCsvUpload";
+import { ScannedTicketsView } from "./ScannedTicketsView";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
@@ -12,7 +13,7 @@ export function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"create" | "view" | "scanners" | "csv">(
+  const [activeTab, setActiveTab] = useState<"create" | "view" | "scanners" | "csv" | "scanned">(
     "create",
   );
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -293,10 +294,10 @@ export function AdminPage() {
             </div>
 
             {/* Simple Tabs */}
-            <div className="flex justify-center gap-4 border-b">
+            <div className="flex justify-center gap-4 border-b overflow-x-auto">
               <button
                 onClick={() => setActiveTab("create")}
-                className={`px-4 py-3 font-medium text-sm transition-colors ${
+                className={`px-4 py-3 font-medium text-sm transition-colors whitespace-nowrap ${
                   activeTab === "create"
                     ? "border-b-2 border-red-600 text-red-600"
                     : "text-gray-600 hover:text-gray-900"
@@ -307,7 +308,7 @@ export function AdminPage() {
 
               <button
                 onClick={() => setActiveTab("view")}
-                className={`px-4 py-3 font-medium text-sm transition-colors ${
+                className={`px-4 py-3 font-medium text-sm transition-colors whitespace-nowrap ${
                   activeTab === "view"
                     ? "border-b-2 border-red-600 text-red-600"
                     : "text-gray-600 hover:text-gray-900"
@@ -317,8 +318,19 @@ export function AdminPage() {
               </button>
 
               <button
+                onClick={() => setActiveTab("scanned")}
+                className={`px-4 py-3 font-medium text-sm transition-colors whitespace-nowrap ${
+                  activeTab === "scanned"
+                    ? "border-b-2 border-red-600 text-red-600"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Scanned
+              </button>
+
+              <button
                 onClick={() => setActiveTab("scanners")}
-                className={`px-4 py-3 font-medium text-sm transition-colors ${
+                className={`px-4 py-3 font-medium text-sm transition-colors whitespace-nowrap ${
                   activeTab === "scanners"
                     ? "border-b-2 border-red-600 text-red-600"
                     : "text-gray-600 hover:text-gray-900"
@@ -329,7 +341,7 @@ export function AdminPage() {
 
               <button
                 onClick={() => setActiveTab("csv")}
-                className={`px-4 py-3 font-medium text-sm transition-colors ${
+                className={`px-4 py-3 font-medium text-sm transition-colors whitespace-nowrap ${
                   activeTab === "csv"
                     ? "border-b-2 border-red-600 text-red-600"
                     : "text-gray-600 hover:text-gray-900"
@@ -347,6 +359,7 @@ export function AdminPage() {
         <div className="max-w-5xl mx-auto h-full">
           {activeTab === "create" && <CreateTicket />}
           {activeTab === "view" && <AdminTicketsView />}
+          {activeTab === "scanned" && <ScannedTicketsView />}
           {activeTab === "scanners" && <ScannerManagement />}
           {activeTab === "csv" && <AdminCsvUpload />}
         </div>
